@@ -117,7 +117,7 @@ error:
 	return -4;
 }
 
-static int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_type type, const uint16_t *data, size_t num_words) {
+int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_type type, const uint16_t *data, size_t num_words) {
 	size_t bytes_remaining = capacity(message);
 	if(num_words >= 0x8000 || bytes_remaining < 4 + num_words*2) {
 		/* not enough space */
@@ -134,27 +134,6 @@ static int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_
 	for(size_t i = 0; i < num_words; i++) {
 		push_u16(&message->data, data[i]);
 	}
-
-	return 0;
-}
-
-/* only used for testing */
-static int NTS_encode_record_str(slice *message, bool critical, enum NTS_record_type type, const unsigned char *data, size_t len) {
-	size_t bytes_remaining = capacity(message);
-	if(bytes_remaining < 4 + len) {
-		/* not enough space */
-		return -1;
-	}
-
-	if(critical) {
-		type |= 0x8000;
-	}
-
-	push_u16(&message->data, type);
-	push_u16(&message->data, len);
-
-	memcpy(message->data, data, len);
-	message->data += len;
 
 	return 0;
 }
@@ -186,6 +165,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 
 	/* clear response */
 	size_t cookie_nr = 0;
+	bool is_ntp4 = false;
 	char *ntp_server_terminator = NULL;
 	memset(response, 0, sizeof(struct NTS_response));
 
@@ -218,14 +198,20 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 					/* this hack saves having to allocate a string that we are going to keep in-memory */
 					*ntp_server_terminator = '\0';
 				}
-				response->error = NTS_SUCCESS;
-				return 0;
+				if(is_ntp4 && response->aead_id != 0) {
+					response->error = NTS_SUCCESS;
+					return 0;
+				} else {
+					response->error = NTS_BAD_RESPONSE;
+					return -1;
+				}
 
 			case NTS_NextProto:
 				/* confirm that NTPv4 is on offer */
 				do {
 					check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_PROTOCOL);
 				} while(val != NTS_PROTO_NTPv4);
+				is_ntp4 = true;
 				break;
 
                 	case NTS_AEADAlgorithm:

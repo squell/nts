@@ -218,10 +218,17 @@ int main(int argc, char **argv)
      * server closes the connection.
      */
     while (SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
-	printf("RAW: ");
-	for(size_t i=0;i<readbytes; i++) printf("%02x ", buffer[i]);
-	printf("\n");
-	dump_packet(buffer, readbytes);
+	struct NTS_response NTS;
+	NTS_decode_response(buffer, readbytes, &NTS);
+	printf("> CODE: %d\n", NTS.result);
+	printf("> AEAD %d\n", NTS.aead_id);
+	printf("> %s:%d\n", NTS.ntp_server? NTS.ntp_server : "*", NTS.ntp_port);
+	for(int i=0; NTS.cookie[i].data; i++) {
+		printf("| ");
+		for(size_t n=0; n < NTS.cookie[i].length; n++)
+			printf("%02x", NTS.cookie[i].data[n]);
+		printf("\n");
+	}
     }
 
     /* In case the response didn't finish with a newline we add one now */

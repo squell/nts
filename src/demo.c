@@ -220,7 +220,7 @@ int main(int argc, char **argv)
     while (SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
 	struct NTS_response NTS;
 	NTS_decode_response(buffer, readbytes, &NTS);
-	printf("> CODE: %d\n", NTS.result);
+	printf("> ERR: %d\n", NTS.error);
 	printf("> AEAD %d\n", NTS.aead_id);
 	printf("> %s:%d\n", NTS.ntp_server? NTS.ntp_server : "*", NTS.ntp_port);
 	for(int i=0; NTS.cookie[i].data; i++) {

@@ -7,8 +7,23 @@ enum {
         NTS_AEAD_AES_SIV_CMAC_512 = 17,
 };
 
+enum NTS_error_type {
+        NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
+        NTS_BAD_REQUEST = 1,
+        NTS_INTERNAL_SERVER_ERROR = 2,
+
+        NTS_UNEXPECTED_WARNING = 0x4000,
+        NTS_BAD_RESPONSE = 0x4001,
+        NTS_INTERNAL_CLIENT_ERROR = 0x4002,
+        NTS_NO_PROTOCOL = 0x4003,
+        NTS_NO_AEAD = 0x4004,
+        NTS_INSUFFICIENT_DATA = 0x4FFF,
+
+	NTS_SUCCESS = -1,
+};
+
 struct NTS_response {
-	uint16_t result; /* NTS_error encoding + 1 */
+	enum NTS_error_type error;
 
 	NTS_AEAD_algorithm_type aead_id;
 

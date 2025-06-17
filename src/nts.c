@@ -22,18 +22,6 @@ enum NTS_record_type {
 	NTS_NTPv4Port = 7,
 };
 
-enum NTS_error_type {
-	NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
-	NTS_BAD_REQUEST = 1,
-	NTS_INTERNAL_SERVER_ERROR = 2,
-
-	NTS_UNEXPECTED_WARNING = 0x8000,
-	NTS_BAD_RESPONSE = 0x8001,
-	NTS_INTERNAL_CLIENT_ERROR = 0x8002,
-	NTS_NO_PROTOCOL = 0x8003,
-	NTS_NO_AEAD = 0x8004,
-};
-
 enum NTS_protocol_type {
 	NTS_PROTO_NTPv4 = 0,
 };
@@ -201,59 +189,55 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 	char *ntp_server_terminator = NULL;
 	memset(response, 0, sizeof(struct NTS_response));
 
-	/* make sure the result is only 0 if we really succeed */
-	response->result = NTS_INTERNAL_CLIENT_ERROR;
+	/* make sure the result is only OK if we really succeed */
+	response->error = NTS_INTERNAL_CLIENT_ERROR;
 
-        #define on_error(expr, err) {  \
-		int result = (expr);   \
-		if(result < 0) {       \
-			val = (err);   \
-			goto error;    \
-		}                      \
+        #define check(expr, err) {               \
+		if(expr); else {                 \
+			response->error = (err); \
+			return -1;               \
+		}                                \
 	}
 
-        #define on_error_bad(expr) on_error(expr, NTS_BAD_RESPONSE)
-
-	int val;
         while(raw_response.data < raw_response.data_end) {
-		on_error_bad(val = NTS_decode_record(&raw_response, &rec));
+		int val = NTS_decode_record(&raw_response, &rec);
+		check(val >= 0, NTS_BAD_RESPONSE);
 		switch(rec.type) {
 			case NTS_Error:
-				on_error_bad(val = NTS_decode_u16(&rec));
-				goto error;
+				check((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
+				response->error = val;
+				return -1;
 
 			case NTS_Warning:
-				on_error_bad(val = NTS_decode_u16(&rec));
-				val = NTS_UNEXPECTED_WARNING;
-				goto error;
+				check(NTS_decode_u16(&rec) >= 0, NTS_BAD_RESPONSE);
+				response->error = NTS_UNEXPECTED_WARNING;
+				return -1;
 
 			case NTS_EndOfMessage:
 				if(ntp_server_terminator) {
 					/* this hack saves having to allocate a string that we are going to keep in-memory */
 					*ntp_server_terminator = '\0';
 				}
-				response->result = 0;
+				response->error = NTS_SUCCESS;
 				return 0;
 
 			case NTS_NextProto:
 				/* confirm that NTPv4 is on offer */
 				do {
-					on_error(val = NTS_decode_u16(&rec), NTS_NO_PROTOCOL);
+					check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_PROTOCOL);
 				} while(val != NTS_PROTO_NTPv4);
 				break;
 
                 	case NTS_AEADAlgorithm:
-				/* confirm that one of the offered AEAD algo's is offered */
-				on_error(val = NTS_decode_u16(&rec), NTS_NO_AEAD);
-				int agreed = false;
+				/* confirm that one of the supported AEAD algo's is offered */
+				check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
 				for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
-					agreed |= (val == NTS_supported_aead_algos[i]);
+					if(val == NTS_supported_aead_algos[i]) {
+						response->aead_id = val;
+						break;
+					}
 				}
-				if(!agreed) {
-					val = NTS_NO_AEAD;
-					goto error;
-				}
-				response->aead_id = val;
+				check(response->aead_id == val, NTS_NO_AEAD);
 				break;
 
 			case NTS_NTPv4Cookie:
@@ -267,22 +251,16 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 
 			case NTS_NTPv4Server:
 				/* do limited sanity check */
-				if(capacity(&rec.body) > 255) {
-					val = NTS_BAD_RESPONSE;
-					goto error;
-				}
+				check(capacity(&rec.body) <= 255, NTS_BAD_RESPONSE);
 				for(const unsigned char* p = rec.body.data; p != rec.body.data_end; p++) {
-					if(!isascii(*p) || !isgraph(*p)) {
-						val = NTS_BAD_RESPONSE;
-						goto error;
-					}
+					check(isascii(*p) && isgraph(*p), NTS_BAD_RESPONSE);
 				}
 				response->ntp_server  = (char *)rec.body.data;
 				ntp_server_terminator = (char *)rec.body.data_end;
 				break;
 
 			case NTS_NTPv4Port:
-				on_error_bad(val = NTS_decode_u16(&rec));
+				check((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
 				response->ntp_port = val;
 				break;
 
@@ -292,54 +270,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 		}
 	}
 
-error:
-	response->result = val + 1;
+	response->error = NTS_INSUFFICIENT_DATA;
 	return -1;
 }
-#undef on_error_bad
-#undef on_error
-
-#include <stdio.h>
-void dump_packet(unsigned char *buffer, size_t len) {
-	slice response = { buffer, buffer+len };
-	struct NTS_record rec;
-        while(response.data < response.data_end) {
-            int result = NTS_decode_record(&response, &rec);
-            int i;
-            if(result < 0) {
-                printf("decode failed[%d]: type %u\n", result, rec.type);
-            }
-            switch(rec.type) {
-                case NTS_Error:
-                    printf("error %u\n", NTS_decode_u16(&rec));
-                    break;
-                case NTS_EndOfMessage:
-                    printf("end of message\n");
-                    break;
-                case NTS_NextProto:
-                    printf("offered protocols: ");
-                    while((i = NTS_decode_u16(&rec)) >= 0) printf("%u, ", i);
-                    printf("\n");
-                    break;
-                case NTS_AEADAlgorithm:
-                    printf("offered algorithms: ");
-                    while((i = NTS_decode_u16(&rec)) >= 0) printf("%u, ", i);
-                    printf("\n");
-                    break;
-                case NTS_NTPv4Cookie:
-                    printf("yumyum: ");
-                    for(unsigned char *p = rec.body.data; p != rec.body.data_end; p++) printf("%02x", *p);
-                    printf("\n");
-                    break;
-                case NTS_NTPv4Port:
-                    printf("ntp port: %u\n", NTS_decode_u16(&rec));
-                    break;
-                case NTS_NTPv4Server:
-                    printf("ntp server: <%*.s>\n", (int)capacity(&rec.body), rec.body.data);
-                    break;
-                default:
-                    printf("unknown record type %d\n", rec.type);
-            }
-        }
-
-}
+#undef check

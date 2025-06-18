@@ -1,6 +1,9 @@
 #ifndef NTS_H_UEHFIOUEWHFHAWOGHRE
 #define NTS_H_UEHFIOUEWHFHAWOGHRE
 
+#include <stdint.h>
+#include <openssl/ssl.h>
+
 typedef uint16_t NTS_AEAD_algorithm_type;
 enum {
         NTS_AEAD_AES_SIV_CMAC_256 = 15,
@@ -40,5 +43,7 @@ extern int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_
 extern int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *);
 
 extern int NTS_aead_key_size(NTS_AEAD_algorithm_type);
+
+extern int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_size);
 
 #endif

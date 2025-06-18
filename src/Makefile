@@ -1,17 +1,20 @@
-.PHONY: clean test
-CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11
+.PHONY: all clean test
+CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11 -Wno-unused-value
 
-demo: demo.o nts.o
+demo: demo.o nts_packet.o nts_ssl.o
 	$(CC) $+ -lssl -lcrypto -o $@
 
-nts_test: nts.o nts_test.o
+all: demo qdntp nts_test
+
+nts_test: nts_packet.o nts_test.o
 
 test: nts_test
 	@./nts_test
 	@echo all tests passed
 
-nts_record.o: nts.c nts.h
+nts_packet.o: nts_packet.c nts.h
+nts_ssl.o: nts_ssl.c nts.h
 demo.o: demo.c nts.h
 
 clean:
-	rm demo.o nts.o demo nts_test
+	rm *.o demo nts_test

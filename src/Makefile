@@ -15,6 +15,7 @@ test: nts_test
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
 demo.o: demo.c nts.h
+qdntp: qdntp.o sntp.o
 
 clean:
 	rm *.o demo nts_test

@@ -39,11 +39,11 @@ struct NTS_response {
 	} cookie[9];
 };
 
-extern int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type *);
-extern int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *);
+int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type *);
+int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *);
 
-extern int NTS_aead_key_size(NTS_AEAD_algorithm_type);
+int NTS_aead_key_size(NTS_AEAD_algorithm_type);
 
-extern int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_size);
+int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_size);
 
 #endif

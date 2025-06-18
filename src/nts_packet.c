@@ -48,11 +48,11 @@ typedef struct {
 	unsigned char *data_end;
 } slice;
 
-/* does not check bounds */
 static size_t capacity(slice *slice) {
 	return slice->data_end - slice->data;
 }
 
+/* does not check bounds */
 static void push_u16(unsigned char **data, uint16_t value) {
 	value = htons(value);
 	memcpy(*data, &value, 2);

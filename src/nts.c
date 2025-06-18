@@ -7,6 +7,8 @@
 
 #include "nts.h"
 
+#define ELEMS(array) (sizeof(array) / sizeof(*array))
+
 enum NTS_record_type {
 	/* critical */
 	NTS_EndOfMessage = 0,
@@ -26,10 +28,20 @@ enum NTS_protocol_type {
 	NTS_PROTO_NTPv4 = 0,
 };
 
-uint8_t NTS_supported_aead_algos[] = {
-        NTS_AEAD_AES_SIV_CMAC_256,
-        NTS_AEAD_AES_SIV_CMAC_512,
+struct { char id, key_len; } NTS_supported_aead_algos[] = {
+	{ NTS_AEAD_AES_SIV_CMAC_256, 16 },
+	{ NTS_AEAD_AES_SIV_CMAC_512, 32 },
 };
+
+int NTS_aead_key_size(NTS_AEAD_algorithm_type id) {
+	for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
+		if(NTS_supported_aead_algos[i].id == id) {
+			return NTS_supported_aead_algos[i].key_len;
+		}
+	}
+
+	return -1;
+}
 
 typedef struct {
 	unsigned char *data;
@@ -138,8 +150,6 @@ int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_type ty
 	return 0;
 }
 
-#define ELEMS(array) (sizeof(array) / sizeof(*array))
-
 int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type *preferred_crypto) {
 	slice request = { buffer, buffer + buf_size };
 
@@ -217,13 +227,8 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
                 	case NTS_AEADAlgorithm:
 				/* confirm that one of the supported AEAD algo's is offered */
 				check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
-				for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
-					if(val == NTS_supported_aead_algos[i]) {
-						response->aead_id = val;
-						break;
-					}
-				}
-				check(response->aead_id == val, NTS_NO_AEAD);
+				response->aead_id = val;
+				check(NTS_aead_key_size(response->aead_id) > 0, NTS_NO_AEAD);
 				break;
 
 			case NTS_NTPv4Cookie:

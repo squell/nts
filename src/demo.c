@@ -299,7 +299,7 @@ int main(int argc, char **argv)
     res = EXIT_SUCCESS;
 
     double delay, offset;
-    nts_poll(hostname, ntp_port, &nts, add_nts_fields, &delay, &offset);
+    nts_poll(hostname, ntp_port, &nts, &delay, &offset);
     printf("roundtrip delay: %f\n", delay);
     printf("offset: %f\n", offset);
  end:

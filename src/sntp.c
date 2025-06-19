@@ -52,7 +52,7 @@ static uint64_t ntohll(uint64_t x) {
 	return (uint64_t)ntohl(parts[0]) << 32 | ntohl(parts[1]);
 }
 
-void nts_poll(const char *host, int port, const struct NTS *cfg, callback fun, double *roundtrip_delay, double *time_offset) {
+void nts_poll(const char *host, int port, const struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
 	/* resolve address */
 	static struct addrinfo hints;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -79,7 +79,7 @@ void nts_poll(const char *host, int port, const struct NTS *cfg, callback fun, d
 	unsigned int buflen = sizeof(packet);
 	unsigned char unique[32];
 	if(cfg) {
-		buflen = fun(&buf, cfg);
+		buflen = add_nts_fields(&buf, cfg);
 		assert(buflen > 0);
 		memcpy(unique, buf+52, 32);
 	}
@@ -102,6 +102,10 @@ void nts_poll(const char *host, int port, const struct NTS *cfg, callback fun, d
 		assert(rcpt.identifier.length == 32);
 		assert(memcmp(rcpt.identifier.data, unique, 32) == 0);
 		assert(rcpt.new_cookie.data);
+		printf("new cookie: ");
+		for(size_t n=0; n < rcpt.new_cookie.length; n++)
+			    printf("%02x", rcpt.new_cookie.data[n]);
+		printf("\n");
 	}
 
 	/* perform the calculation */

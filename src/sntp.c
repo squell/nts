@@ -13,6 +13,7 @@
 #include <fcntl.h>
 
 #include "sntp.h"
+#include "nts_extfields.h"
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
@@ -95,8 +96,12 @@ void nts_poll(const char *host, int port, const struct NTS *cfg, callback fun, d
 
 	if(cfg) {
 		assert(n > 48);
-		/* TODO: not guaranteed to find the extension field here */
-		assert(memcmp(unique, buf+52, 32) == 0);
+		struct NTS_receipt rcpt = { 0, };
+		assert(parse_nts_fields(&buf, n, cfg, &rcpt));
+		assert(rcpt.identifier.data);
+		assert(rcpt.identifier.length == 32);
+		assert(memcmp(rcpt.identifier.data, unique, 32) == 0);
+		assert(rcpt.new_cookie.data);
 	}
 
 	/* perform the calculation */

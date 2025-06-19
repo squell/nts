@@ -18,10 +18,10 @@ demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o
 clean:
 	rm -f a.out *.o demo qdntp nts_test
 
-demo.o: demo.c nts.h sntp.h nts_extfields.h
-nts_extfields.o: nts_extfields.c sntp.h nts.h nts_extfields.h
+demo.o: demo.c nts.h nts_extfields.h sntp.h
+nts_extfields.o: nts_extfields.c nts_extfields.h nts.h
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
 nts_test.o: nts_test.c nts.h
-qdntp.o: qdntp.c sntp.h nts.h nts_extfields.h
-sntp.o: sntp.c sntp.h nts.h nts_extfields.h
+qdntp.o: qdntp.c sntp.h
+sntp.o: sntp.c sntp.h nts_extfields.h nts.h

@@ -37,8 +37,6 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
         return padlen;
 }
 
-/* note: we use this unconventonial way of passing a pointer to let the compiler check array bounds in a limited way */
-
 #define check(expr) if(expr); else return 0;
 
 /* called should make sure that there is enough room in ptxt for holding the plaintext-padded-to-block size + one additional block */

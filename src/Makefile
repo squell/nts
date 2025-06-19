@@ -9,7 +9,7 @@ test: nts_test
 	@./nts_test
 	@echo all tests passed
 
-qdntp: qdntp.o sntp.o
+qdntp: qdntp.o sntp.o nts_extfields.o
 	$(CC) $+ -lssl -lcrypto -o $@
 
 demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o

@@ -28,27 +28,12 @@ enum NTS_protocol_type {
 	NTS_PROTO_NTPv4 = 0,
 };
 
-struct { char id, key_len; } NTS_supported_aead_algos[] = {
-	{ NTS_AEAD_AES_SIV_CMAC_256, 16 },
-	{ NTS_AEAD_AES_SIV_CMAC_512, 32 },
-};
-
-int NTS_aead_key_size(NTS_AEAD_algorithm_type id) {
-	for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
-		if(NTS_supported_aead_algos[i].id == id) {
-			return NTS_supported_aead_algos[i].key_len;
-		}
-	}
-
-	return -1;
-}
-
 typedef struct {
 	unsigned char *data;
 	unsigned char *data_end;
 } slice;
 
-static size_t capacity(slice *slice) {
+static size_t capacity(const slice *slice) {
 	return slice->data_end - slice->data;
 }
 
@@ -154,7 +139,7 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
 	slice request = { buffer, buffer + buf_size };
 
 	const uint16_t proto[] = { NTS_PROTO_NTPv4 };
-	const uint16_t aead_default[] = { NTS_AEAD_AES_SIV_CMAC_256 }, *aead = aead_default;
+	const uint16_t aead_default[] = { NTS_AEAD_AES_SIV_CMAC_256, NTS_AEAD_AES_SIV_CMAC_512 }, *aead = aead_default;
 	size_t aead_len = ELEMS(aead_default);
 	if(preferred_crypto) {
 		aead = preferred_crypto;
@@ -228,7 +213,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 				/* confirm that one of the supported AEAD algo's is offered */
 				check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
 				response->aead_id = val;
-				check(NTS_aead_key_size(response->aead_id) > 0, NTS_NO_AEAD);
+				check(NTS_AEAD_cipher_name(response->aead_id), NTS_NO_AEAD);
 				break;
 
 			case NTS_NTPv4Cookie:
@@ -265,3 +250,29 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 	return -1;
 }
 #undef check
+
+static struct { const char id, key_len, *name; } NTS_supported_aead_algos[] = {
+	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, "AES-128-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, "AES-256-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, "AES-192-SIV" },
+};
+
+int NTS_AEAD_key_size(NTS_AEAD_algorithm_type id) {
+	for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
+		if(NTS_supported_aead_algos[i].id == id) {
+			return NTS_supported_aead_algos[i].key_len;
+		}
+	}
+
+	return -1;
+}
+
+const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type id) {
+	for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
+		if(NTS_supported_aead_algos[i].id == id) {
+			return NTS_supported_aead_algos[i].name;
+		}
+	}
+
+	return NULL;
+}

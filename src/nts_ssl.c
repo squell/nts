@@ -1,10 +1,13 @@
 #include "nts.h"
 
-int NTS_SSL_extract_keys(SSL *ssl, NTS_AEAD_algorithm_type aead, unsigned char *c2s, unsigned char *s2c, int key_size) {
+int NTS_SSL_extract_keys(SSL *ssl, NTS_AEAD_algorithm_type aead, unsigned char *c2s, unsigned char *s2c, int key_capacity) {
         unsigned char *keys[] = { c2s, s2c };
         const char label[30] = { "EXPORTER-network-time-security" }; /* note: this does not include the zero byte */
 
-        if(NTS_aead_key_size(aead) != key_size) {
+	int key_size = NTS_AEAD_key_size(aead);
+	if(!key_size) {
+		return -3;
+	} else if(key_size > key_capacity) {
                 return -2;
         }
 
@@ -16,4 +19,9 @@ int NTS_SSL_extract_keys(SSL *ssl, NTS_AEAD_algorithm_type aead, unsigned char *
         }
 
         return 0;
+}
+
+EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type id) {
+	const char *name = NTS_AEAD_cipher_name(id);
+	return name? EVP_CIPHER_fetch(NULL, name, NULL) : NULL;
 }

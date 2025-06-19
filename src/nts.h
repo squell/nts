@@ -7,6 +7,7 @@
 typedef uint16_t NTS_AEAD_algorithm_type;
 enum {
         NTS_AEAD_AES_SIV_CMAC_256 = 15,
+        NTS_AEAD_AES_SIV_CMAC_384 = 16,
         NTS_AEAD_AES_SIV_CMAC_512 = 17,
 };
 
@@ -42,8 +43,10 @@ struct NTS_response {
 int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type *);
 int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *);
 
-int NTS_aead_key_size(NTS_AEAD_algorithm_type);
+int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_capacity);
 
-int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_size);
+int NTS_AEAD_key_size(NTS_AEAD_algorithm_type);
+EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type);
+const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type);
 
 #endif

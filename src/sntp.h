@@ -3,9 +3,9 @@
 #include "nts.h"
 
 struct NTS {
-	struct NTS_cookie *cookie;
-	struct NTS_cookie *nonce;
-	EVP_CIPHER_CTX *s2c_cipher, *c2s_cipher;
+	struct NTS_cookie cookie;
+	uint8_t *c2s_key, *s2c_key;
+	EVP_CIPHER *cipher;
 };
 
 #define ntp_poll(host, port, roundtrip_delay, time_offset) nts_poll(host, port, NULL, roundtrip_delay, time_offset)

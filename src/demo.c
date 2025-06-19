@@ -13,6 +13,7 @@
  */
 
 #include <string.h>
+#include <assert.h>
 
 /* Include the appropriate header file for SOCK_STREAM */
 #ifdef _WIN32 /* Windows */
@@ -26,6 +27,7 @@
 #include <openssl/err.h>
 
 #include "nts.h"
+#include "sntp.h"
 
 /* Helper function to create a BIO connected to the server */
 static BIO *create_socket_bio(const char *hostname, const char *port, int family)
@@ -109,6 +111,7 @@ int main(int argc, char **argv)
     int ret;
     size_t written, readbytes;
     char *hostname, *port;
+    int ntp_port;
 
     hostname = "ptbtime1.ptb.de";
     if(argc > 1) {
@@ -123,8 +126,8 @@ int main(int argc, char **argv)
      */
     ctx = SSL_CTX_new(TLS_client_method());
     if (ctx == NULL) {
-	    printf("Failed to create the SSL_CTX\n");
-	    goto end;
+	printf("Failed to create the SSL_CTX\n");
+	goto end;
     }
 
     /*
@@ -147,6 +150,11 @@ int main(int argc, char **argv)
         printf("Failed to set the minimum TLS protocol version\n");
         goto end;
     }
+    if (!SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION)) {
+        printf("Failed to set the minimum TLS protocol version\n");
+        goto end;
+    }
+
 
     /* Create an SSL object to represent the TLS connection */
     ssl = SSL_new(ctx);
@@ -217,22 +225,43 @@ int main(int argc, char **argv)
      * Get up to sizeof(buf) bytes of the response. We keep reading until the
      * server closes the connection.
      */
+    struct NTS nts;
+
     while (SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
 	struct NTS_response NTS;
 	NTS_decode_response(buffer, readbytes, &NTS);
-	printf("> ERR: %d\n", NTS.error);
-	printf("> AEAD %d\n", NTS.aead_id);
-	printf("> %s:%d\n", NTS.ntp_server? NTS.ntp_server : "*", NTS.ntp_port);
-	for(int i=0; NTS.cookie[i].data; i++) {
-		printf("| ");
-		for(size_t n=0; n < NTS.cookie[i].length; n++)
-			printf("%02x", NTS.cookie[i].data[n]);
-		printf("\n");
+	if(NTS.error >= 0) {
+	    printf("NTS error: 0x%04X\n", NTS.error);
+	    break;
 	}
-    }
 
-    /* In case the response didn't finish with a newline we add one now */
-    printf("\n");
+	const char *cipher = NTS_AEAD_cipher_name(NTS.aead_id);
+	assert(cipher != NULL);
+
+	printf("selected AEAD: %s\n", cipher);
+
+        #define FALLBACK(x, y) (x? x : y)
+	hostname = (char*)FALLBACK(NTS.ntp_server, hostname);
+	ntp_port = FALLBACK(NTS.ntp_port, 123);
+
+	printf("ntp server: %s:%d\n", hostname, ntp_port);
+	for(int i=0; NTS.cookie[i].data; i++) {
+	    printf("cookie%d: ", i+1);
+	    for(size_t n=0; n < NTS.cookie[i].length; n++)
+		    printf("%02x", NTS.cookie[i].data[n]);
+	    printf("\n");
+	}
+
+	static unsigned char c2s[64], s2c[64];
+	nts = (struct NTS) {
+	    .cipher = NTS_AEAD_cipher(NTS.aead_id),
+	    .cookie = *NTS.cookie,
+	    .c2s_key = c2s,
+	    .s2c_key = s2c,
+	};
+
+	assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, nts.c2s_key, nts.s2c_key, 64) == 0);
+    }
 
     /*
      * Check whether we finished the while loop above normally or as the
@@ -267,6 +296,11 @@ int main(int argc, char **argv)
 
     /* Success! */
     res = EXIT_SUCCESS;
+
+    double delay, offset;
+    nts_poll(hostname, ntp_port, &nts, &delay, &offset);
+    printf("roundtrip delay: %f\n", delay);
+    printf("offset: %f\n", offset);
  end:
     /*
      * If something bad happened then we will dump the contents of the

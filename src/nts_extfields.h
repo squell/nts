@@ -9,6 +9,11 @@ struct NTS {
         EVP_CIPHER *cipher;
 };
 
+struct NTS_receipt {
+	struct { unsigned char *data; size_t length; } identifier, new_cookie;
+};
+
 int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts);
+int parse_nts_fields(unsigned char (*base)[1280], size_t len, const struct NTS *, struct NTS_receipt *);
 
 #endif

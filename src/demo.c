@@ -27,6 +27,7 @@
 #include <openssl/err.h>
 
 #include "nts.h"
+#include "nts_extfields.h"
 #include "sntp.h"
 
 /* Helper function to create a BIO connected to the server */
@@ -298,7 +299,7 @@ int main(int argc, char **argv)
     res = EXIT_SUCCESS;
 
     double delay, offset;
-    nts_poll(hostname, ntp_port, &nts, &delay, &offset);
+    nts_poll(hostname, ntp_port, &nts, add_nts_fields, &delay, &offset);
     printf("roundtrip delay: %f\n", delay);
     printf("offset: %f\n", offset);
  end:

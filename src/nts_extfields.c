@@ -81,7 +81,7 @@ enum extfields {
         UniqueIdentifier = 0x0104,
         Cookie           = 0x0204,
         AuthEncExtFields = 0x0404,
-        NoOpField        = 0x8200,
+        NoOpField        = 0x0200,
 };
 
 int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {

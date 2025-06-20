@@ -8,6 +8,9 @@
 
 #include "nts_extfields.h"
 
+/* we use this constant to mark which mentions of 16 refer to the AES cipher block size and which ones don't */
+#define BLKSIZ 16
+
 typedef struct {
         unsigned char *data;
         unsigned char *data_end;
@@ -39,7 +42,7 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 
 #define check(expr) if(expr); else return 0;
 
-/* called should make sure that there is enough room in ptxt for holding the plaintext-padded-to-block size + one additional block */
+/* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
 static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS *nts) {
         unsigned char *ctxt_start = ctxt;
         int len;
@@ -49,7 +52,7 @@ static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt
 
         check(EVP_EncryptInit_ex(state, nts->cipher, NULL, nts->c2s_key, NULL));
         /* leave room for the tag */
-        ctxt += 16;
+        ctxt += BLKSIZ;
 
         /* process the associated data first */
         for( ; info->data; info++) {
@@ -63,11 +66,11 @@ static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt
         ctxt += len;
 
         check(EVP_EncryptFinal_ex(state, ctxt, &len));
-        assert(len < 16);
+        assert(len < BLKSIZ);
         ctxt += len;
 
         /* prepend the AEAD tag */
-        check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, 16, ctxt_start));
+        check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, BLKSIZ, ctxt_start));
 
         EVP_CIPHER_CTX_free(state);
 
@@ -121,6 +124,8 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
                 { EF+4, EF_payload }, /* nonce */
                 { NULL },
         };
+
+        assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + BLKSIZ);
         uint16_t ctxt_len = write_encrypted_fields(EF_payload, plain_text, ptxt_len, info, nts);
 
         /* add padding if we used a too-short nonce */
@@ -135,9 +140,9 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
         return buf.data - *base;
 }
 
-/* TODO BOUNDS CHECK */
+/* caller should make sure that there is enough room in ptxt for holding the ciphertext */
 static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS *nts) {
-	unsigned char *ptxt_start = ptxt;
+        unsigned char *ptxt_start = ptxt;
         int len;
 
         EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
@@ -146,9 +151,9 @@ static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt,
         check(EVP_DecryptInit_ex(state, nts->cipher, NULL, nts->s2c_key, NULL));
 
         /* set the AEAD tag */
-        check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, 16, (unsigned char*)ctxt));
-	ctxt += 16;
-	ctxt_len -= 16;
+        check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, BLKSIZ, (unsigned char*)ctxt));
+        ctxt += BLKSIZ;
+        ctxt_len -= BLKSIZ;
 
         /* process the associated data first */
         for( ; info->data; info++) {
@@ -162,7 +167,7 @@ static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt,
         ptxt += len;
 
         check(EVP_DecryptFinal_ex(state, ptxt, &len));
-        assert(len < 16);
+        assert(len < BLKSIZ);
         ptxt += len;
 
         EVP_CIPHER_CTX_free(state);
@@ -172,71 +177,72 @@ static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt,
 
 /* caller checks memory bounds */
 static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char *bytes) {
-	memcpy(a, bytes, 2), memcpy(b, bytes+2, 2);
-	*a = ntohs(*a), *b = ntohs(*b);
+        memcpy(a, bytes, 2), memcpy(b, bytes+2, 2);
+        *a = ntohs(*a), *b = ntohs(*b);
 }
 
 int parse_nts_fields(unsigned char (*base)[1280], size_t len, const struct NTS *nts, struct NTS_receipt *fields) {
         slice buf = { *base + 48, *base + len };
-	int processed = 0;
+        int processed = 0;
 
         while(capacity(&buf) >= 4) {
                 uint16_t type, len;
-		decode_hdr(&type, &len, buf.data);
+                decode_hdr(&type, &len, buf.data);
                 check(capacity(&buf) >= len);
 
-		switch(type) {
-			case UniqueIdentifier:
-				fields->identifier.data = buf.data + 4;
-				fields->identifier.length = len - 4;
-				++processed;
-				break;
-			case AuthEncExtFields: {
-				uint16_t nonce_len, ciph_len;
-				decode_hdr(&nonce_len, &ciph_len, buf.data + 4);
-				check(nonce_len + ciph_len + 8 <= len);
-				unsigned char *nonce = buf.data + 8;
-				unsigned char *content = nonce + nonce_len;
+                switch(type) {
+                        case UniqueIdentifier:
+                                fields->identifier.data = buf.data + 4;
+                                fields->identifier.length = len - 4;
+                                ++processed;
+                                break;
+                        case AuthEncExtFields: {
+                                uint16_t nonce_len, ciph_len;
+                                decode_hdr(&nonce_len, &ciph_len, buf.data + 4);
+                                check(nonce_len + ciph_len + 8 <= len);
+                                unsigned char *nonce = buf.data + 8;
+                                unsigned char *content = nonce + nonce_len;
 
-				slice info[] = {
-					{ *base, buf.data }, /* aad */
-					{ nonce, content },  /* nonce */
-					{ NULL },
-				};
-				int plain_len = read_encrypted_fields(content, content, ciph_len, info, nts);
-				check(plain_len < ciph_len);
+                                slice info[] = {
+                                        { *base, buf.data }, /* aad */
+                                        { nonce, content },  /* nonce */
+                                        { NULL },
+                                };
 
-				slice plain = { content, content + plain_len };
-				while(capacity(&plain) >= 4) {
-					uint16_t type, len;
-					decode_hdr(&type, &len, plain.data);
-					check(capacity(&plain) >= len);
+                                int plain_len = read_encrypted_fields(content, content, ciph_len, info, nts);
+                                check(plain_len < ciph_len);
 
-					/* only care about cookies */
-					switch(type) {
-						case Cookie:
-							fields->new_cookie.data = plain.data + 4;
-							fields->new_cookie.length = len - 4;
-							++processed;
-							break;
-						default:
-							plain.data += len;
-							continue;
-					}
+                                slice plain = { content, content + plain_len };
+                                while(capacity(&plain) >= 4) {
+                                        uint16_t type, len;
+                                        decode_hdr(&type, &len, plain.data);
+                                        check(capacity(&plain) >= len);
 
-					break;
-				}
+                                        /* only care about cookies */
+                                        switch(type) {
+                                                case Cookie:
+                                                        fields->new_cookie.data = plain.data + 4;
+                                                        fields->new_cookie.length = len - 4;
+                                                        ++processed;
+                                                        break;
+                                                default:
+                                                        plain.data += len;
+                                                        continue;
+                                        }
 
-				break;
-			}
+                                        break;
+                                }
 
-			default:
-				/* ignore unknown fields */
-				;
-		};
+                                break;
+                        }
+
+                        default:
+                                /* ignore unknown fields */
+                                ;
+                };
 
                 buf.data += len;
         }
 
-	return processed;
+        return processed;
 }

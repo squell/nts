@@ -23,7 +23,7 @@ struct ntp_packet {
 	uint8_t precision;
 	uint32_t root_delay;
 	uint32_t root_dispersion;
-	uint32_t reference_id;
+	char reference_id[4];
 	uint64_t timestamp[4];
 } packet = { 043, };
 
@@ -90,6 +90,9 @@ void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_del
 	assert(n >= (int)sizeof(packet));
 
 	assert((packet.li_vn_mode & 077) == 044);
+	if(packet.stratum == 0) {
+		printf("Kiss of death: %.4s\n", packet.reference_id);
+	}
 	assert(packet.stratum != 0);
 	assert(start == ntohll(packet.timestamp[1]));
 

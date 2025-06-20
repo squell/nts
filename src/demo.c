@@ -300,6 +300,10 @@ int main(int argc, char **argv)
 
     double delay, offset;
     nts_poll(hostname, ntp_port, &nts, &delay, &offset);
+    printf("cookie*: ");
+    for(size_t i=0; i < nts.cookie.length; i++)
+        printf("%02x", nts.cookie.data[i]);
+    printf("\n");
     printf("roundtrip delay: %f\n", delay);
     printf("offset: %f\n", offset);
  end:

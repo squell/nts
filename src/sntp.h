@@ -2,4 +2,4 @@
 
 struct NTS;
 
-void nts_poll(const char *host, int port, const struct NTS *cfg, double *roundtrip_delay, double *time_offset);
+void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_delay, double *time_offset);

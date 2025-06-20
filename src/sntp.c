@@ -5,7 +5,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -52,7 +51,7 @@ static uint64_t ntohll(uint64_t x) {
 	return (uint64_t)ntohl(parts[0]) << 32 | ntohl(parts[1]);
 }
 
-void nts_poll(const char *host, int port, const struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
+void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
 	/* resolve address */
 	static struct addrinfo hints;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -102,10 +101,9 @@ void nts_poll(const char *host, int port, const struct NTS *cfg, double *roundtr
 		assert(rcpt.identifier.length == 32);
 		assert(memcmp(rcpt.identifier.data, unique, 32) == 0);
 		assert(rcpt.new_cookie.data);
-		printf("new cookie: ");
-		for(size_t n=0; n < rcpt.new_cookie.length; n++)
-			    printf("%02x", rcpt.new_cookie.data[n]);
-		printf("\n");
+		assert(rcpt.new_cookie.length <= cfg->cookie.length);
+		memcpy(cfg->cookie.data, rcpt.new_cookie.data, rcpt.new_cookie.length);
+		cfg->cookie.length = rcpt.new_cookie.length;
 	}
 
 	/* perform the calculation */
@@ -115,10 +113,6 @@ void nts_poll(const char *host, int port, const struct NTS *cfg, double *roundtr
 	T[2] = ntohll(packet.timestamp[2]);
 	T[3] = ntohll(packet.timestamp[3]);
 	T[4] = get_current_ntp_time();
-	printf("%lu\n", (uint64_t) ntohll(packet.timestamp[0]));
-	printf("%lu\n", (uint64_t) ntohll(packet.timestamp[1]));
-	printf("%lu\n", (uint64_t) ntohll(packet.timestamp[2]));
-	printf("%lu\n", (uint64_t) ntohll(packet.timestamp[3]));
 
 	long double d = (T[4] - T[1]) - (T[3] - T[2]);
 	long double t = (T[2] - T[1]) + (T[3] - T[4]);

@@ -234,13 +234,14 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 	*a = ntohs(*a), *b = ntohs(*b);
 }
 
-int parse_nts_fields(unsigned char (*base)[1280], size_t len, const struct NTS *nts, struct NTS_receipt *fields) {
-	slice buf = { *base + 48, *base + len };
+int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
+	slice buf = { *base + 48, *base + max_len };
 	int processed = 0;
 
 	while(capacity(&buf) >= 4) {
 		uint16_t type, len;
 		decode_hdr(&type, &len, buf.data);
+		check(len >= 4);
 		check(capacity(&buf) >= len);
 
 		switch(type) {

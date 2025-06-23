@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 			.cookie = *NTS.cookie,
 		};
 
-		assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, nts.c2s_key, nts.s2c_key, 64) == 0);
+		assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, c2s, s2c, 64) == 0);
 	}
 
 	assert(SSL_get_error(ssl, 0) == SSL_ERROR_ZERO_RETURN);

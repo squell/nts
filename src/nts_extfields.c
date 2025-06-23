@@ -13,6 +13,8 @@
 
 #include "nts_extfields.h"
 
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 /* we use this constant to mark which mentions of 16 refer to the AES cipher block size and which ones don't */
 #define BLKSIZ 16
 

@@ -24,7 +24,7 @@ struct ntp_packet {
 } packet = { 043, };
 
 /* check that there is no padding */
-static_assert(sizeof(struct ntp_packet) == (4*32 + 4*64) / 8);
+typedef int ntp_padding_check[sizeof(struct ntp_packet) == 48];
 
 static uint64_t get_current_ntp_time(void) {
 	struct timespec time;

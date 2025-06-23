@@ -30,72 +30,18 @@
 #include "nts_extfields.h"
 #include "sntp.h"
 
+int attach_socket(const char *host, int port, int type);
+
 /* Helper function to create a BIO connected to the server */
-static BIO *create_socket_bio(const char *hostname, const char *port, int family)
-{
-    int sock = -1;
-    BIO_ADDRINFO *res;
-    const BIO_ADDRINFO *ai = NULL;
-    BIO *bio;
+static BIO *connect_bio(const char *hostname, int port) {
+	BIO *bio = BIO_new(BIO_s_socket());
+	if(!bio) return NULL;
 
-    /*
-     * Lookup IP address info for the server.
-     */
-    if (!BIO_lookup_ex(hostname, port, BIO_LOOKUP_CLIENT, family, SOCK_STREAM, 0,
-                       &res))
-        return NULL;
+	int sock = attach_socket(hostname, port, SOCK_STREAM);
+	if(sock <= 0) return NULL;
 
-    /*
-     * Loop through all the possible addresses for the server and find one
-     * we can connect to.
-     */
-    for (ai = res; ai != NULL; ai = BIO_ADDRINFO_next(ai)) {
-        /*
-         * Create a TCP socket. We could equally use non-OpenSSL calls such
-         * as "socket" here for this and the subsequent connect and close
-         * functions. But for portability reasons and also so that we get
-         * errors on the OpenSSL stack in the event of a failure we use
-         * OpenSSL's versions of these functions.
-         */
-        sock = BIO_socket(BIO_ADDRINFO_family(ai), SOCK_STREAM, 0, 0);
-        if (sock == -1)
-            continue;
-
-        /* Connect the socket to the server's address */
-        if (!BIO_connect(sock, BIO_ADDRINFO_address(ai), BIO_SOCK_NODELAY)) {
-            BIO_closesocket(sock);
-            sock = -1;
-            continue;
-        }
-
-        /* We have a connected socket so break out of the loop */
-        break;
-    }
-
-    /* Free the address information resources we allocated earlier */
-    BIO_ADDRINFO_free(res);
-
-    /* If sock is -1 then we've been unable to connect to the server */
-    if (sock == -1)
-        return NULL;
-
-    /* Create a BIO to wrap the socket */
-    bio = BIO_new(BIO_s_socket());
-    if (bio == NULL) {
-        BIO_closesocket(sock);
-        return NULL;
-    }
-
-    /*
-     * Associate the newly created BIO with the underlying socket. By
-     * passing BIO_CLOSE here the socket will be automatically closed when
-     * the BIO is freed. Alternatively you can use BIO_NOCLOSE, in which
-     * case you must close the socket explicitly when it is no longer
-     * needed.
-     */
-    BIO_set_fd(bio, sock, BIO_CLOSE);
-
-    return bio;
+	BIO_set_fd(bio, sock, BIO_CLOSE);
+	return bio;
 }
 
 unsigned char buffer[65536];
@@ -151,10 +97,6 @@ int main(int argc, char **argv)
         printf("Failed to set the minimum TLS protocol version\n");
         goto end;
     }
-    if (!SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION)) {
-        printf("Failed to set the minimum TLS protocol version\n");
-        goto end;
-    }
 
 
     /* Create an SSL object to represent the TLS connection */
@@ -168,7 +110,7 @@ int main(int argc, char **argv)
      * Create the underlying transport socket/BIO and associate it with the
      * connection.
      */
-    bio = create_socket_bio(hostname, port, AF_INET);
+    bio = connect_bio(hostname, atoi(port));
     if (bio == NULL) {
         printf("Failed to create the BIO\n");
         goto end;

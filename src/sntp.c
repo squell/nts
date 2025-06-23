@@ -1,15 +1,11 @@
 #include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/random.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <fcntl.h>
 
 #include "sntp.h"
 #include "nts_extfields.h"
@@ -51,23 +47,11 @@ static uint64_t ntohll(uint64_t x) {
 	return (uint64_t)ntohl(parts[0]) << 32 | ntohl(parts[1]);
 }
 
+int attach_socket(const char *host, int port, int type);
+
 void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
-	/* resolve address */
-	static struct addrinfo hints;
-	hints.ai_socktype = SOCK_DGRAM;
-
-	struct addrinfo *info;
-	assert(getaddrinfo(host, NULL, &hints, &info) == 0);
-
-	/* set port -- is the same memory location for IPv4 and IPv6 */
-	assert(info->ai_family == AF_INET6 || info->ai_family == AF_INET);
-	((struct sockaddr_in*)info->ai_addr)->sin_port = htons(port);
-
-	/* bind the socket */
-	int sock = socket(info->ai_family, SOCK_DGRAM, 0);
-	assert(sock != -1);
-
-	assert(connect(sock, info->ai_addr, info->ai_addrlen) == 0);
+	int sock = attach_socket(host, port, SOCK_DGRAM);
+	assert(sock > 0);
 
 	/* take time measurement and send NTP packet */
 	uint64_t start;

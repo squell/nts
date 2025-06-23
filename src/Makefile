@@ -14,10 +14,10 @@ test: nts_test
 	@./nts_test
 	@echo all tests passed
 
-qdntp: qdntp.o sntp.o nts_extfields.o
+qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
 
-demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o
+demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
 clean:

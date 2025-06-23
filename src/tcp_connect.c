@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-int attach_socket(const char *host, int port, int type) {
+int nts_attach_socket(const char *host, int port, int type) {
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_socktype = type;

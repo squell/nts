@@ -139,7 +139,7 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
 	slice request = { buffer, buffer + buf_size };
 
 	const uint16_t proto[] = { NTS_PROTO_NTPv4 };
-	const uint16_t aead_default[] = { NTS_AEAD_AES_SIV_CMAC_256, NTS_AEAD_AES_SIV_CMAC_512 }, *aead = aead_default;
+	const uint16_t aead_default[] = { NTS_AEAD_AES_SIV_CMAC_256, NTS_AEAD_AES_SIV_CMAC_384, NTS_AEAD_AES_SIV_CMAC_512 }, *aead = aead_default;
 	size_t aead_len = ELEMS(aead_default);
 	if(preferred_crypto) {
 		aead = preferred_crypto;

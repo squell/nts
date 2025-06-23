@@ -47,10 +47,10 @@ static uint64_t ntohll(uint64_t x) {
 	return (uint64_t)ntohl(parts[0]) << 32 | ntohl(parts[1]);
 }
 
-int attach_socket(const char *host, int port, int type);
+int nts_attach_socket(const char *host, int port, int type);
 
 void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
-	int sock = attach_socket(host, port, SOCK_DGRAM);
+	int sock = nts_attach_socket(host, port, SOCK_DGRAM);
 	assert(sock > 0);
 
 	/* take time measurement and send NTP packet */

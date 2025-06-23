@@ -17,7 +17,7 @@ test: nts_test
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
 
-demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o
+demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o ssl_connect.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
 clean:

@@ -1,10 +1,10 @@
 /*
- *  Copyright 2023 The OpenSSL Project Authors. All Rights Reserved.
+ *	Copyright 2023 The OpenSSL Project Authors. All Rights Reserved.
  *
- *  Licensed under the Apache License 2.0 (the "License").  You may not use
- *  this file except in compliance with the License.  You can obtain a copy
- *  in the file LICENSE in the source distribution or at
- *  https://www.openssl.org/source/license.html
+ *	Licensed under the Apache License 2.0 (the "License").	You may not use
+ *	this file except in compliance with the License.  You can obtain a copy
+ *	in the file LICENSE in the source distribution or at
+ *	https://www.openssl.org/source/license.html
  */
 
 /*
@@ -15,14 +15,8 @@
 #include <string.h>
 #include <assert.h>
 
-/* Include the appropriate header file for SOCK_STREAM */
-#ifdef _WIN32 /* Windows */
-# include <winsock2.h>
-#else /* Linux/Unix */
-# include <sys/socket.h>
-#endif
+#include <sys/socket.h>
 
-#include <openssl/bio.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -30,243 +24,92 @@
 #include "nts_extfields.h"
 #include "sntp.h"
 
-int attach_socket(const char *host, int port, int type);
-
-/* Helper function to create a BIO connected to the server */
-static BIO *connect_bio(const char *hostname, int port) {
-	BIO *bio = BIO_new(BIO_s_socket());
-	if(!bio) return NULL;
-
-	int sock = attach_socket(hostname, port, SOCK_STREAM);
-	if(sock <= 0) return NULL;
-
-	BIO_set_fd(bio, sock, BIO_CLOSE);
-	return bio;
-}
+SSL *nts_setup_ssl(const char *hostname, int port, int load_certs(SSL_CTX *), int nonblocking);
 
 unsigned char buffer[65536];
 
-/*
- * adapted from openssl demo
- */
 int main(int argc, char **argv)
 {
-    SSL_CTX *ctx = NULL;
-    SSL *ssl = NULL;
-    BIO *bio = NULL;
-    int res = EXIT_FAILURE;
-    int ret;
-    size_t written, readbytes;
-    char *hostname, *port;
-    int ntp_port;
+	const char *hostname = "ptbtime1.ptb.de";
+	if(argc > 1) {
+		hostname = argv[1];
+	}
+	int ntp_port = 123;
+	int port = 4460;
 
-    hostname = "ptbtime1.ptb.de";
-    if(argc > 1) {
-	hostname = argv[1];
-    }
-    port = "4460";
+	SSL *ssl = nts_setup_ssl(hostname, port, SSL_CTX_set_default_verify_paths, 1);
+	assert(ssl);
 
-    /*
-     * Create an SSL_CTX which we can use to create SSL objects from. We
-     * want an SSL_CTX for creating clients so we use TLS_client_method()
-     * here.
-     */
-    ctx = SSL_CTX_new(TLS_client_method());
-    if (ctx == NULL) {
-	printf("Failed to create the SSL_CTX\n");
-	goto end;
-    }
+	assert(SSL_connect(ssl) == 1);
 
-    /*
-     * Configure the client to abort the handshake if certificate
-     * verification fails. Virtually all clients should do this unless you
-     * really know what you are doing.
-     */
-    //SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
+	int size = NTS_encode_request(buffer, sizeof(buffer), NULL);
 
-    /* Use the default trusted certificate store */
-    if (!SSL_CTX_set_default_verify_paths(ctx)) {
-        printf("Failed to set the default trusted certificate store\n");
-        goto end;
-    }
+	size_t written, readbytes;
 
-    /* We require a minimum TLS version of TLSv1.3.
-     */
-    if (!SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION)) {
-        printf("Failed to set the minimum TLS protocol version\n");
-        goto end;
-    }
-
-
-    /* Create an SSL object to represent the TLS connection */
-    ssl = SSL_new(ctx);
-    if (ssl == NULL) {
-        printf("Failed to create the SSL object\n");
-        goto end;
-    }
-
-    /*
-     * Create the underlying transport socket/BIO and associate it with the
-     * connection.
-     */
-    bio = connect_bio(hostname, atoi(port));
-    if (bio == NULL) {
-        printf("Failed to create the BIO\n");
-        goto end;
-    }
-    SSL_set_bio(ssl, bio, bio);
-
-    /*
-     * Tell the server during the handshake which hostname we are attempting
-     * to connect to in case the server supports multiple hosts.
-     */
-    if (!SSL_set_tlsext_host_name(ssl, hostname)) {
-        printf("Failed to set the SNI hostname\n");
-        goto end;
-    }
-
-    /*
-     * Ensure we check during certificate verification that the server has
-     * supplied a certificate for the hostname that we were expecting.
-     * Virtually all clients should do this unless you really know what you
-     * are doing.
-     */
-    if (!SSL_set1_host(ssl, hostname)) {
-        printf("Failed to set the certificate verification hostname");
-        goto end;
-    }
-
-    /* Set the ALPN to NTS */
-    unsigned char alpn[8] = "\x07ntske/1";
-    if (SSL_set_alpn_protos(ssl, alpn, sizeof(alpn)) != 0) {
-        printf("Failed to set the ALPN for the connection.");
-        goto end;
-    }
-    /* Do the handshake with the server */
-    if (SSL_connect(ssl) < 1) {
-        printf("Failed to connect to the server\n");
-        /*
-         * If the failure is due to a verification error we can get more
-         * information about it from SSL_get_verify_result().
-         */
-        if (SSL_get_verify_result(ssl) != X509_V_OK)
-            printf("Verify error: %s\n",
-                X509_verify_cert_error_string(SSL_get_verify_result(ssl)));
-        goto end;
-    }
-
-    /* Write a NTS request */
-    int size = NTS_encode_request(buffer, sizeof(buffer), NULL);
-
-    if (!SSL_write_ex(ssl, buffer, size, &written)) {
-	printf("Failed to write request\n");
-	goto end;
-    }
-
-    /*
-     * Get up to sizeof(buf) bytes of the response. We keep reading until the
-     * server closes the connection.
-     */
-    struct NTS nts;
-
-    while (SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
-	struct NTS_response NTS;
-	NTS_decode_response(buffer, readbytes, &NTS);
-	if(NTS.error >= 0) {
-	    printf("NTS error: 0x%04X\n", NTS.error);
-	    break;
+	if(!SSL_write_ex(ssl, buffer, size, &written)) {
+		printf("failed to write request\n");
+		goto end;
 	}
 
-	const char *cipher = NTS_AEAD_cipher_name(NTS.aead_id);
-	assert(cipher != NULL);
+	/*
+	 * Get up to sizeof(buf) bytes of the response. We keep reading until the
+	 * server closes the connection.
+	 */
+	struct NTS nts;
 
-	printf("selected AEAD: %s\n", cipher);
+	while(SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
+		struct NTS_response NTS;
+		assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
+		if(NTS.error >= 0) {
+			printf("NTS error: 0x%04X\n", NTS.error);
+			goto end;
+		}
 
-        #define FALLBACK(x, y) (x? x : y)
-	hostname = (char*)FALLBACK(NTS.ntp_server, hostname);
-	ntp_port = FALLBACK(NTS.ntp_port, 123);
+		const char *cipher = NTS_AEAD_cipher_name(NTS.aead_id);
+		assert(cipher != NULL);
+		printf("selected AEAD: %s\n", cipher);
 
-	printf("ntp server: %s:%d\n", hostname, ntp_port);
-	for(int i=0; NTS.cookie[i].data; i++) {
-	    printf("cookie%d: ", i+1);
-	    for(size_t n=0; n < NTS.cookie[i].length; n++)
-		    printf("%02x", NTS.cookie[i].data[n]);
-	    printf("\n");
-	}
+		#define FALLBACK(x, y) (x? x : y)
+		hostname = FALLBACK(NTS.ntp_server, hostname);
+		ntp_port = FALLBACK(NTS.ntp_port, ntp_port);
 
-	static unsigned char c2s[64], s2c[64];
-	nts = (struct NTS) {
+		printf("ntp server: %s:%d\n", hostname, ntp_port);
+		for(int i=0; NTS.cookie[i].data; i++) {
+			printf("cookie%d: ", i+1);
+			for(size_t n=0; n < NTS.cookie[i].length; n++)
+					printf("%02x", NTS.cookie[i].data[n]);
+			printf("\n");
+		}
+
+		static unsigned char c2s[64], s2c[64];
+		nts = (struct NTS) {
 #ifndef USE_LIBAES_SIV
-	    .cipher = NTS_AEAD_cipher(NTS.aead_id),
+			.cipher = NTS_AEAD_cipher(NTS.aead_id),
 #else
-	    .key_len = NTS_AEAD_key_size(NTS.aead_id),
+			.key_len = NTS_AEAD_key_size(NTS.aead_id),
 #endif
-	    .c2s_key = c2s,
-	    .s2c_key = s2c,
-	    .cookie = *NTS.cookie,
-	};
+			.c2s_key = c2s,
+			.s2c_key = s2c,
+			.cookie = *NTS.cookie,
+		};
 
-	assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, nts.c2s_key, nts.s2c_key, 64) == 0);
-    }
+		assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, nts.c2s_key, nts.s2c_key, 64) == 0);
+	}
 
-    /*
-     * Check whether we finished the while loop above normally or as the
-     * result of an error. The 0 argument to SSL_get_error() is the return
-     * code we received from the SSL_read_ex() call. It must be 0 in order
-     * to get here. Normal completion is indicated by SSL_ERROR_ZERO_RETURN.
-     */
-    if (SSL_get_error(ssl, 0) != SSL_ERROR_ZERO_RETURN) {
-        /*
-         * Some error occurred other than a graceful close down by the
-         * peer.
-         */
-        printf ("Failed reading remaining data\n");
-        goto end;
-    }
+	assert(SSL_get_error(ssl, 0) == SSL_ERROR_ZERO_RETURN);
+	assert(SSL_shutdown(ssl) == 1);
 
-    /*
-     * The peer already shutdown gracefully (we know this because of the
-     * SSL_ERROR_ZERO_RETURN above). We should do the same back.
-     */
-    ret = SSL_shutdown(ssl);
-    if (ret < 1) {
-        /*
-         * ret < 0 indicates an error. ret == 0 would be unexpected here
-         * because that means "we've sent a close_notify and we're waiting
-         * for one back". But we already know we got one from the peer
-         * because of the SSL_ERROR_ZERO_RETURN above.
-         */
-        printf("Error shutting down\n");
-        goto end;
-    }
-
-    /* Success! */
-    res = EXIT_SUCCESS;
-
-    double delay, offset;
-    nts_poll(hostname, ntp_port, &nts, &delay, &offset);
-    printf("cookie*: ");
-    for(size_t i=0; i < nts.cookie.length; i++)
-        printf("%02x", nts.cookie.data[i]);
-    printf("\n");
-    printf("roundtrip delay: %f\n", delay);
-    printf("offset: %f\n", offset);
+	double delay, offset;
+	nts_poll(hostname, ntp_port, &nts, &delay, &offset);
+	printf("cookie*: ");
+	for(size_t i=0; i < nts.cookie.length; i++)
+		printf("%02x", nts.cookie.data[i]);
+	printf("\n");
+	printf("roundtrip delay: %f\n", delay);
+	printf("offset: %f\n", offset);
  end:
-    /*
-     * If something bad happened then we will dump the contents of the
-     * OpenSSL error stack to stderr. There might be some useful diagnostic
-     * information there.
-     */
-    if (res == EXIT_FAILURE)
-        ERR_print_errors_fp(stderr);
+	ERR_print_errors_fp(stderr);
 
-    /*
-     * Free the resources we allocated. We do not free the BIO object here
-     * because ownership of it was immediately transferred to the SSL object
-     * via SSL_set_bio(). The BIO will be freed when we free the SSL object.
-     */
-    SSL_free(ssl);
-    SSL_CTX_free(ctx);
-    return res;
+	SSL_free(ssl);
+	return 0;
 }

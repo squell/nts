@@ -209,7 +209,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 				is_ntp4 = true;
 				break;
 
-                	case NTS_AEADAlgorithm:
+			case NTS_AEADAlgorithm:
 				/* confirm that one of the supported AEAD algo's is offered */
 				check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
 				response->aead_id = val;

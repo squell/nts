@@ -5,6 +5,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef USE_LIBAES_SIV
+#  include <aes_siv.h>
+#else
+#  define OPENSSL_WORKAROUND
+#endif
 
 #include "nts_extfields.h"
 
@@ -44,37 +49,59 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
 static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS *nts) {
-        unsigned char *ctxt_start = ctxt;
+#ifndef USE_LIBAES_SIV
         int len;
 
         EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
-        assert(state);
+#else
+        AES_SIV_CTX *state = AES_SIV_CTX_new();
+#endif
+        check(state);
 
+#ifndef USE_LIBAES_SIV
         check(EVP_EncryptInit_ex(state, nts->cipher, NULL, nts->c2s_key, NULL));
-        /* leave room for the tag */
-        ctxt += BLKSIZ;
+#else
+        check(AES_SIV_Init(state, nts->c2s_key, nts->key_len));
+#endif
 
         /* process the associated data first */
         for( ; info->data; info++) {
+#ifndef USE_LIBAES_SIV
                 check(EVP_EncryptUpdate(state, NULL, &len, info->data, capacity(info)));
                 assert((size_t)len == capacity(info));
+#else
+                check(AES_SIV_AssociateData(state, info->data, capacity(info)));
+#endif
         }
+
+#ifndef USE_LIBAES_SIV
+        unsigned char *ctxt_start = ctxt;
+        ctxt += BLKSIZ;
 
         /* encrypt data */
         check(EVP_EncryptUpdate(state, ctxt, &len, ptxt, ptxt_len));
-        assert(len == ptxt_len);
+        assert(len <= ptxt_len);
         ctxt += len;
 
         check(EVP_EncryptFinal_ex(state, ctxt, &len));
-        assert(len < BLKSIZ);
+        assert(len <= BLKSIZ);
         ctxt += len;
+        assert(ctxt - ctxt_start == ptxt_len + BLKSIZ);
 
         /* prepend the AEAD tag */
         check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, BLKSIZ, ctxt_start));
+#else
+        /* encrypt data and write tag */
+        check(AES_SIV_EncryptFinal(state, ctxt, ctxt+BLKSIZ, ptxt, ptxt_len));
+#endif
 
+#ifndef USE_LIBAES_SIV
         EVP_CIPHER_CTX_free(state);
+#else
+        AES_SIV_CTX_free(state);
+#endif
 
-        return ctxt - ctxt_start;
+        return ptxt_len + BLKSIZ;
 }
 
 enum extfields {
@@ -104,7 +131,7 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
         unsigned char EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
         assert((nonce_len & 3) == 0);
 
-#ifndef NO_WORKAROUND
+#ifdef OPENSSL_WORKAROUND
         /* bug in OpenSSL: https://github.com/openssl/openssl/issues/26580,
            which means that a ciphertext HAS TO BE PRESENT */
         unsigned char plain_text[4];
@@ -142,37 +169,61 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
 static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS *nts) {
-        unsigned char *ptxt_start = ptxt;
+	assert(ctxt_len >= BLKSIZ);
+#ifndef USE_LIBAES_SIV
         int len;
 
         EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
-        assert(state);
+#else
+        AES_SIV_CTX *state = AES_SIV_CTX_new();
+#endif
+        check(state);
 
+#ifndef USE_LIBAES_SIV
         check(EVP_DecryptInit_ex(state, nts->cipher, NULL, nts->s2c_key, NULL));
 
         /* set the AEAD tag */
         check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, BLKSIZ, (unsigned char*)ctxt));
+#else
+        check(AES_SIV_Init(state, nts->s2c_key, nts->key_len));
+#endif
         ctxt += BLKSIZ;
         ctxt_len -= BLKSIZ;
 
         /* process the associated data first */
         for( ; info->data; info++) {
+#ifndef USE_LIBAES_SIV
                 check(EVP_DecryptUpdate(state, NULL, &len, info->data, capacity(info)));
                 assert((size_t)len == capacity(info));
+#else
+                check(AES_SIV_AssociateData(state, info->data, capacity(info)));
+#endif
         }
+
+#ifndef USE_LIBAES_SIV
+        unsigned char *ptxt_start = ptxt;
 
         /* decrypt data */
         check(EVP_DecryptUpdate(state, ptxt, &len, ctxt, ctxt_len));
-        assert(len == ctxt_len);
+        assert(len <= ctxt_len);
         ptxt += len;
 
         check(EVP_DecryptFinal_ex(state, ptxt, &len));
-        assert(len < BLKSIZ);
+        assert(len <= BLKSIZ);
         ptxt += len;
+        assert(ptxt - ptxt_start == ctxt_len);
+#else
+        /* decrypt data */
+        check(AES_SIV_DecryptFinal(state, ptxt, ctxt - BLKSIZ, ctxt, ctxt_len));
+#endif
 
+#ifndef USE_LIBAES_SIV
         EVP_CIPHER_CTX_free(state);
+#else
+        AES_SIV_CTX_free(state);
+#endif
 
-        return ptxt - ptxt_start;
+        return ctxt_len;
 }
 
 /* caller checks memory bounds */
@@ -209,10 +260,10 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t len, const struct NTS *
                                         { NULL },
                                 };
 
-                                int plain_len = read_encrypted_fields(content, content, ciph_len, info, nts);
+                                int plain_len = read_encrypted_fields(content+BLKSIZ, content, ciph_len, info, nts);
                                 check(plain_len < ciph_len);
+                                slice plain = { content+BLKSIZ, content+BLKSIZ + plain_len };
 
-                                slice plain = { content, content + plain_len };
                                 while(capacity(&plain) >= 4) {
                                         uint16_t type, len;
                                         decode_hdr(&type, &len, plain.data);

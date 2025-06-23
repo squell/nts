@@ -21,7 +21,9 @@ int NTS_SSL_extract_keys(SSL *ssl, NTS_AEAD_algorithm_type aead, unsigned char *
         return 0;
 }
 
+#ifndef USE_LIBAES_SIV
 EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type id) {
 	const char *name = NTS_AEAD_cipher_name(id);
 	return name? EVP_CIPHER_fetch(NULL, name, NULL) : NULL;
 }
+#endif

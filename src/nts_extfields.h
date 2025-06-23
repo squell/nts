@@ -6,7 +6,11 @@
 struct NTS {
         struct NTS_cookie cookie;
         uint8_t *c2s_key, *s2c_key;
+#ifndef USE_LIBAES_SIV
         EVP_CIPHER *cipher;
+#else
+	unsigned int key_len;
+#endif
 };
 
 struct NTS_receipt {

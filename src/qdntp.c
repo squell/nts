@@ -30,3 +30,25 @@ int main(int argc, char **argv) {
 
 	return 0;
 }
+
+/* these are here to silence the linker */
+#define STUB(name) int name() { return -1; }
+
+/* openssl functions */
+STUB(EVP_EncryptInit_ex)
+STUB(EVP_DecryptInit_ex)
+STUB(EVP_EncryptUpdate)
+STUB(EVP_DecryptUpdate)
+STUB(EVP_EncryptFinal_ex)
+STUB(EVP_DecryptFinal_ex)
+STUB(EVP_CIPHER_CTX_new)
+STUB(EVP_CIPHER_CTX_ctrl)
+STUB(EVP_CIPHER_CTX_free)
+
+/* libaes_siv functions */
+STUB(AES_SIV_Init)
+STUB(AES_SIV_AssociateData)
+STUB(AES_SIV_EncryptFinal)
+STUB(AES_SIV_DecryptFinal)
+STUB(AES_SIV_CTX_new)
+STUB(AES_SIV_CTX_free)

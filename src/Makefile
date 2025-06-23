@@ -1,5 +1,10 @@
 .PHONY: all clean test
+
 CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11 -Wno-unused-value
+ifneq (${SIV},OPENSSL)
+  CFLAGS += -I../libaes_siv -DUSE_LIBAES_SIV
+  STATIC += ../libaes_siv/libaes_siv.a
+endif
 
 all: demo qdntp
 
@@ -10,10 +15,10 @@ test: nts_test
 	@echo all tests passed
 
 qdntp: qdntp.o sntp.o nts_extfields.o
-	$(CC) $+ -lssl -lcrypto -o $@
+	$(CC) $+ -o $@
 
 demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o
-	$(CC) $+ -lssl -lcrypto -o $@
+	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
 clean:
 	rm -f a.out *.o demo qdntp nts_test

@@ -255,10 +255,14 @@ int main(int argc, char **argv)
 
 	static unsigned char c2s[64], s2c[64];
 	nts = (struct NTS) {
+#ifndef USE_LIBAES_SIV
 	    .cipher = NTS_AEAD_cipher(NTS.aead_id),
-	    .cookie = *NTS.cookie,
+#else
+	    .key_len = NTS_AEAD_key_size(NTS.aead_id),
+#endif
 	    .c2s_key = c2s,
 	    .s2c_key = s2c,
+	    .cookie = *NTS.cookie,
 	};
 
 	assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, nts.c2s_key, nts.s2c_key, 64) == 0);

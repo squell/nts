@@ -16,7 +16,7 @@ static void encode_record_raw(unsigned char **message, uint16_t type, const void
 		type & 0xFF,
 		len >> 8,
 		len & 0xFF,
-	};	
+	};
 
 	memcpy(*message, hdr, 4);
 	memcpy(*message+4, data, len);

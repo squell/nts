@@ -82,7 +82,7 @@ static int NTS_decode_record(slice *message, struct NTS_record *record) {
 
 	record->type = u16_from_bytes(message->data) & 0x7FFF;
 	record->body.data = message->data += 4;
-        record->body.data_end = message->data += body_size;
+	record->body.data_end = message->data += body_size;
 
 	switch(record->type) {
 		case NTS_Error:
@@ -155,8 +155,8 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
 }
 
 int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *response) {
-        slice raw_response = { buffer, buffer+buf_size };
-        struct NTS_record rec;
+	slice raw_response = { buffer, buffer+buf_size };
+	struct NTS_record rec;
 
 	/* clear response */
 	size_t cookie_nr = 0;
@@ -167,14 +167,14 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 	/* make sure the result is only OK if we really succeed */
 	response->error = NTS_INTERNAL_CLIENT_ERROR;
 
-        #define check(expr, err) {               \
+	#define check(expr, err) {               \
 		if(expr); else {                 \
 			response->error = (err); \
 			return -1;               \
 		}                                \
 	}
 
-        while(raw_response.data < raw_response.data_end) {
+	while(raw_response.data < raw_response.data_end) {
 		int val = NTS_decode_record(&raw_response, &rec);
 		check(val >= 0, NTS_BAD_RESPONSE);
 		switch(rec.type) {

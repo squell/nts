@@ -1,7 +1,12 @@
 .PHONY: all clean test
 
+SIV ?= LIBAES_SIV
+
 CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11 -Wno-unused-value
 ifneq (${SIV},OPENSSL)
+  ifneq (${SIV}, LIBAES_SIV)
+    $(error SIV must be one of OPENSSL or LIBAES_SIV)
+  endif
   CFLAGS += -I../libaes_siv -DUSE_LIBAES_SIV
   STATIC += ../libaes_siv/libaes_siv.a
 endif

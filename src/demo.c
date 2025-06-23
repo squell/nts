@@ -28,7 +28,27 @@ int main(int argc, char **argv)
 
 	assert(SSL_connect(ssl) == 1);
 
-	int size = NTS_encode_request(buffer, sizeof(buffer), NULL);
+	uint16_t pref_arr[4] = { 0, }, *prefs = NULL;
+	if(argc > 5) {
+		printf("too many AEAD's specified\n");
+		goto end;
+	} else if(argc > 2) {
+		prefs = pref_arr;
+		for(char **arg = argv+2; *arg; arg++) {
+			#define parse(type) if(strstr(#type, *arg)) *prefs++ = NTS_##type
+			if(strnlen(*arg, 3) < 3) continue; else
+			parse(AEAD_AES_SIV_CMAC_256); else
+			parse(AEAD_AES_SIV_CMAC_384); else
+			parse(AEAD_AES_SIV_CMAC_512); else {
+				printf("unknown AEAD: %s\n", *arg);
+				goto end;
+			}
+			#undef parse
+		}
+		prefs = pref_arr;
+	}
+
+	int size = NTS_encode_request(buffer, sizeof(buffer), prefs);
 
 	size_t written, readbytes;
 

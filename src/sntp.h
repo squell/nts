@@ -1,3 +1,5 @@
+#pragma once
+
 #define ntp_poll(host, port, roundtrip_delay, time_offset) nts_poll(host, port, NULL, roundtrip_delay, time_offset)
 
 struct NTS;

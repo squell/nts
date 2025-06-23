@@ -1,5 +1,4 @@
-#ifndef NTS_EXTFIELDS_H_EIUERIOWHRIHW
-#define NTS_EXTFIELDS_H_EIUERIOWHRIHW
+#pragma once
 
 #include "nts.h"
 
@@ -19,5 +18,3 @@ struct NTS_receipt {
 
 int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts);
 int parse_nts_fields(unsigned char (*base)[1280], size_t len, const struct NTS *, struct NTS_receipt *);
-
-#endif

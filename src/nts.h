@@ -1,5 +1,4 @@
-#ifndef NTS_H_UEHFIOUEWHFHAWOGHRE
-#define NTS_H_UEHFIOUEWHFHAWOGHRE
+#pragma once
 
 #include <stdint.h>
 #include <openssl/ssl.h>
@@ -48,5 +47,3 @@ int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, uns
 int NTS_AEAD_key_size(NTS_AEAD_algorithm_type);
 EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type);
 const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type);
-
-#endif

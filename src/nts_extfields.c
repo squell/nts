@@ -244,6 +244,7 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 }
 
 int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
+	assert(max_len >= 48);
 	slice buf = { *base + 48, *base + max_len };
 	int processed = 0;
 

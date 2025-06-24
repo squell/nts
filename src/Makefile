@@ -1,4 +1,4 @@
-.PHONY: all clean test
+.PHONY: all clean test fuzz fuzz_ntp fuzz_ntske
 
 SIV ?= LIBAES_SIV
 
@@ -16,9 +16,18 @@ all: demo qdntp
 nts_test: nts_packet.o nts_extfields.o nts_test.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
+nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
+	$(CC) $+ ${CFLAGS} -o $@
+
 test: nts_test
 	@./nts_test
 	@echo all tests passed
+
+FUZZTIME ?= 3600
+fuzz_ntske: nts_fuzz
+	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_ke -o out -G 1280 -D ./nts_fuzz @@ +
+fuzz_ntp: nts_fuzz
+	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_extfield -o out -g 48 -G 1280 -D ./nts_fuzz @@
 
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
@@ -27,7 +36,7 @@ demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o ssl_con
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
 clean:
-	rm -f a.out *.o demo qdntp nts_test *.gcno *.gcda
+	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda
 
 demo.o: demo.c nts.h nts_extfields.h sntp.h
 nts_extfields.o: nts_extfields.c nts_extfields.h nts.h
@@ -35,5 +44,6 @@ nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
 nts_test.o: nts_test.c nts.h nts_extfields.h
+nts_fuzz.o: nts_test.c nts.h nts_extfields.h
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

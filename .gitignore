@@ -1,0 +1,11 @@
+*.o
+*.sw?
+*.gcno
+*.gcda
+*.gcov
+a.out
+demo
+qdntp
+nts_test
+nts_fuzz
+out/

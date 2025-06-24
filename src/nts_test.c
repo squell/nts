@@ -177,7 +177,7 @@ void test_ntp_field_encoding(void) {
         assert(!parse_nts_fields(&buffer, len, &nts, &rcpt));
 }
 
-void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS nts, const char *cookie) {
+void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS nts, const char *cookie, unsigned char *corrupt) {
         unsigned char *af = *p_ptr;
         unsigned char *pt;
         /* write nonce */
@@ -185,6 +185,9 @@ void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, stru
         /* write fields */
         encode_record_raw_ext(p_ptr, 0x0104, "5678", 4);
         encode_record_raw_ext(p_ptr, 0x0204, cookie, strlen(cookie));
+
+        /* corrupt a byte */
+        if(corrupt) *corrupt = 0xee;
 
         /* encrypt fields */
         EVP_CIPHER *cipher = EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL);
@@ -231,7 +234,7 @@ static void test_ntp_field_decoding(void) {
 
         /* this deliberately breaks padding rules and sneaks an encrypted identifier */
         encode_record_raw_ext(&p, 0x0104, "1234", 4);
-        add_encrypted_server_hdr(buffer, &p, nts, cookie);
+        add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
 
         struct NTS_receipt rcpt = { 0, };
         assert(parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
@@ -244,7 +247,7 @@ static void test_ntp_field_decoding(void) {
 
         /* same test but no authentication of uniq id */
         p = buffer + 48;
-        add_encrypted_server_hdr(buffer, &p, nts, cookie);
+        add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
         encode_record_raw_ext(&p, 0x0104, "1234", 4);
 
         memset(&rcpt, 0, sizeof(rcpt));
@@ -253,6 +256,25 @@ static void test_ntp_field_decoding(void) {
         /* no authentication at all */
         p = buffer + 48;
         encode_record_raw(&p, 0x0104, "1234", 4);
+        memset(&rcpt, 0, sizeof(rcpt));
+        assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+
+        /* malicious unencrypted field */
+        p = buffer + 48;
+        encode_record_raw_ext(&p, 0x0104, "1234", 4);
+        add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
+        buffer[48+2] = 0xee;
+        memset(&rcpt, 0, sizeof(rcpt));
+        assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+
+        /* malicious encrypted field */
+        p = buffer + 48;
+        encode_record_raw_ext(&p, 0x0104, "1234", 4);
+        /* at p+32 the first plaintext data will be written
+         * so at p+34 is the MSB of the first field length */
+        add_encrypted_server_hdr(buffer, &p, nts, cookie, p+34);
+
+        memset(&rcpt, 0, sizeof(rcpt));
         assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
 }
 

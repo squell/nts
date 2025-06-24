@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
@@ -18,7 +19,7 @@ static void encode_ptr_len_data(unsigned char **message, uint16_t type, const vo
         };
 
         memcpy(*message, hdr, 4);
-        memcpy(*message+4, data, len);
+        if(len) memcpy(*message+4, data, len);
         *message += len + 4;
 }
 
@@ -177,33 +178,37 @@ void test_ntp_field_encoding(void) {
 }
 
 void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS nts, const char *cookie) {
-        unsigned char *p = *p_ptr;
-        unsigned char *af = p;
-        p += 8;
-        memcpy(p, "123NONCE", 8);
-        p += 8;
-        unsigned char *pt = p;
-        p += 16;
-        encode_record_raw_ext(&p, 0x0104, "5678", 4);
-        encode_record_raw_ext(&p, 0x0204, cookie, strlen(cookie));
-        *p_ptr = p;
+        unsigned char *af = *p_ptr;
+        unsigned char *pt;
+        /* write nonce */
+        *p_ptr = pt = (unsigned char*)mempcpy(af+8, "123NONCE", 8) + 16;
+        /* write fields */
+        encode_record_raw_ext(p_ptr, 0x0104, "5678", 4);
+        encode_record_raw_ext(p_ptr, 0x0204, cookie, strlen(cookie));
 
+        /* encrypt fields */
         EVP_CIPHER *cipher = EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL);
         EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
-
         int ignore;
         EVP_EncryptInit_ex(ctx, cipher, NULL, nts.s2c_key, NULL);
         EVP_EncryptUpdate(ctx, NULL, &ignore, buffer, af - buffer);
         EVP_EncryptUpdate(ctx, NULL, &ignore, (uint8_t*)"123NONCE", 8);
-        EVP_EncryptUpdate(ctx, pt+16, &ignore, pt+16, p - (pt+16));
+        EVP_EncryptUpdate(ctx, pt, &ignore, pt, *p_ptr - pt);
         EVP_EncryptFinal_ex(ctx, buffer, &ignore);
         assert(ignore == 0);
-        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, 16, pt);
+        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, 16, pt - 16);
         EVP_CIPHER_CTX_free(ctx);
+        EVP_CIPHER_free(cipher);
 
-        assert(p - pt == 34);
-        assert(p - af == 50);
-        memcpy(af, "\x04\x04\x00\x32\x00\x08\x00\x22", 8);
+        /* set type to 0x404 */
+        memset(af, 0, 8);
+        af[0] = af[1] = 0x04;
+        /* set overall packet length */
+        af[3] = *p_ptr - af;
+        /* set nonce length */
+        af[5] = 8;
+        /* set ciphertext length */
+        af[7] = *p_ptr - pt + 16;
 }
 
 static void test_ntp_field_decoding(void) {

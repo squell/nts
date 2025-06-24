@@ -49,10 +49,11 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 	return padded_len;
 }
 
-#define check(expr) if(expr); else return 0;
+#define check(expr) if(expr); else goto exit;
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
 static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS *nts) {
+	int result = -1;
 #ifndef USE_LIBAES_SIV
 	int len;
 
@@ -99,13 +100,14 @@ static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt
 	check(AES_SIV_EncryptFinal(state, ctxt, ctxt+BLKSIZ, ptxt, ptxt_len));
 #endif
 
+	result = ptxt_len + BLKSIZ;
+exit:
 #ifndef USE_LIBAES_SIV
 	EVP_CIPHER_CTX_free(state);
 #else
 	AES_SIV_CTX_free(state);
 #endif
-
-	return ptxt_len + BLKSIZ;
+	return result;
 }
 
 enum extfields {
@@ -170,14 +172,13 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
 	check(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
 
 	return buf.data - *base;
+exit:
+	return 0;
 }
-
-#undef check
-#define check(expr) if(expr); else return -1;
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
 static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS *nts) {
-	check(ctxt_len >= BLKSIZ);
+	int result = -1;
 #ifndef USE_LIBAES_SIV
 	int len;
 
@@ -186,6 +187,7 @@ static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt,
 	AES_SIV_CTX *state = AES_SIV_CTX_new();
 #endif
 	check(state);
+	check(ctxt_len >= BLKSIZ);
 
 #ifndef USE_LIBAES_SIV
 	check(EVP_DecryptInit_ex(state, nts->cipher, NULL, nts->s2c_key, NULL));
@@ -225,13 +227,14 @@ static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt,
 	check(AES_SIV_DecryptFinal(state, ptxt, ctxt - BLKSIZ, ctxt, ctxt_len));
 #endif
 
+	result = ctxt_len;
+exit:
 #ifndef USE_LIBAES_SIV
 	EVP_CIPHER_CTX_free(state);
 #else
 	AES_SIV_CTX_free(state);
 #endif
-
-	return ctxt_len;
+	return result;
 }
 
 /* caller checks memory bounds */
@@ -239,9 +242,6 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 	memcpy(a, bytes, 2), memcpy(b, bytes+2, 2);
 	*a = ntohs(*a), *b = ntohs(*b);
 }
-
-#undef check
-#define check(expr) if(expr); else return 0;
 
 int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
 	slice buf = { *base + 48, *base + max_len };
@@ -310,5 +310,6 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct N
 		buf.data += len;
 	}
 
+exit:
 	return 0;
 }

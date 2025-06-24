@@ -30,7 +30,7 @@ thread_local enum {
 	NTS_SSL_NO_CONNECTION,
 } NTS_SSL_error;
 
-#define expect if
+#define expect(expr) if(expr)
 
 SSL *nts_setup_ssl(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking) {
 	SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());

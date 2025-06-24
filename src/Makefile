@@ -16,9 +16,15 @@ all: demo qdntp
 nts_test: nts_packet.o nts_extfields.o nts_test.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
+nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
+	$(CC) ${CFLAGS} $+ ${STATIC} -lssl -lcrypto -o $@
+
 test: nts_test
 	@./nts_test
 	@echo all tests passed
+
+fuzz: nts_fuzz
+	@echo fuzzed
 
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
@@ -35,5 +41,6 @@ nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
 nts_test.o: nts_test.c nts.h nts_extfields.h
+nts_fuzz.o: nts_test.c nts.h nts_extfields.h
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

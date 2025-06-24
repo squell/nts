@@ -69,7 +69,7 @@ static int NTS_decode_record(slice *message, struct NTS_record *record) {
 	size_t bytes_remaining = capacity(message);
 	if(bytes_remaining < 4) {
 		/* not enough byte to decode a header */
-		return -1;
+		//return -1;
 	}
 
 	bool is_critical = message->data[0] >> 7;
@@ -77,7 +77,7 @@ static int NTS_decode_record(slice *message, struct NTS_record *record) {
 	uint16_t body_size = u16_from_bytes(message->data + 2);
 	if(body_size > bytes_remaining - 4) {
 		/* not enough data in the slice to decode this header */
-		return -2;
+		//return -2;
 	}
 
 	record->type = u16_from_bytes(message->data) & 0x7FFF;

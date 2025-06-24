@@ -31,20 +31,22 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 	/* enforce minimum size */
 	if(size < len+4) size = len+4;
 	/* pad to a dword boundary */
-	unsigned padlen = (size+3) & ~3;
+	uint16_t padded_len = (size+3) & ~3;
+	int padding = padded_len - (len+4);
 
-	if(capacity(buf) < padlen) {
+	if(capacity(buf) < padded_len) {
 		return 0;
 	}
 
 	memmove(buf->data+4, contents, len);
 	type = htons(type);
 	memcpy(buf->data, &type, 2);
-	len = htons(len+4);
+	len = htons(padded_len);
 	memcpy(buf->data+2, &len, 2);
 
-	buf->data += padlen;
-	return padlen;
+	buf->data += padded_len;
+	memset(buf->data - padding, 0, padding);
+	return padded_len;
 }
 
 #define check(expr) if(expr); else return 0;
@@ -155,7 +157,8 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
 	};
 
 	assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + BLKSIZ);
-	uint16_t ctxt_len = write_encrypted_fields(EF_payload, plain_text, ptxt_len, info, nts);
+	int ctxt_len = write_encrypted_fields(EF_payload, plain_text, ptxt_len, info, nts);
+	check(ctxt_len >= 0);
 
 	/* add padding if we used a too-short nonce */
 	int ef_len = 4 + ctxt_len + (nonce_len < 16? 16 - nonce_len : nonce_len);
@@ -169,9 +172,12 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
 	return buf.data - *base;
 }
 
+#undef check
+#define check(expr) if(expr); else return -1;
+
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
 static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS *nts) {
-	assert(ctxt_len >= BLKSIZ);
+	check(ctxt_len >= BLKSIZ);
 #ifndef USE_LIBAES_SIV
 	int len;
 
@@ -234,6 +240,9 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 	*a = ntohs(*a), *b = ntohs(*b);
 }
 
+#undef check
+#define check(expr) if(expr); else return 0;
+
 int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
 	slice buf = { *base + 48, *base + max_len };
 	int processed = 0;
@@ -264,7 +273,9 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct N
 				};
 
 				int plain_len = read_encrypted_fields(content+BLKSIZ, content, ciph_len, info, nts);
-				check(plain_len < ciph_len);
+				assert(plain_len < ciph_len);
+				if(plain_len < 0) return 0;
+
 				slice plain = { content+BLKSIZ, content+BLKSIZ + plain_len };
 
 				while(capacity(&plain) >= 4) {
@@ -277,7 +288,6 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct N
 						case Cookie:
 							fields->new_cookie.data = plain.data + 4;
 							fields->new_cookie.length = len - 4;
-							++processed;
 							break;
 						default:
 							plain.data += len;
@@ -287,7 +297,9 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct N
 					break;
 				}
 
-				break;
+				/* ignore any further fields after this,
+				 * since they are not authenticated */
+				return processed;
 			}
 
 			default:
@@ -298,5 +310,5 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct N
 		buf.data += len;
 	}
 
-	return processed;
+	return 0;
 }

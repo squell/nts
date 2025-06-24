@@ -113,9 +113,12 @@ int main(int argc, char **argv)
 	printf("\n");
 	printf("roundtrip delay: %f\n", delay);
 	printf("offset: %f\n", offset);
+
+	SSL_free(ssl);
+	return 0;
  end:
 	ERR_print_errors_fp(stderr);
 
 	SSL_free(ssl);
-	return 0;
+	return -1;
 }

@@ -13,8 +13,20 @@ struct NTS {
 };
 
 struct NTS_receipt {
-	struct { unsigned char *data; size_t length; } identifier, new_cookie;
+	struct NTS_cookie identifier, new_cookie;
 };
 
-int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts);
-int parse_nts_fields(unsigned char (*base)[1280], size_t len, const struct NTS *, struct NTS_receipt *);
+/* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.
+ *
+ * RETURNS
+ * 	The amount of data encoded in bytes. Zero bytes encoded indicates an error.
+ */
+int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS *nts);
+
+/* Processed the NTP extension fields in the provided buffer based on the configuration in the NTS struct,
+ * and make this information available in the NTS_receipt struct.
+ *
+ * RETURNS
+ * 	The amount of data processed in bytes. Zero bytes encoded indicates an error.
+ */
+int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const struct NTS *, struct NTS_receipt *);

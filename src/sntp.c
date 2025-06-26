@@ -47,10 +47,10 @@ static uint64_t ntohll(uint64_t x) {
 	return (uint64_t)ntohl(parts[0]) << 32 | ntohl(parts[1]);
 }
 
-int nts_attach_socket(const char *host, int port, int type);
+int NTS_attach_socket(const char *host, int port, int type);
 
 void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
-	int sock = nts_attach_socket(host, port, SOCK_DGRAM);
+	int sock = NTS_attach_socket(host, port, SOCK_DGRAM);
 	assert(sock > 0);
 
 	/* take time measurement and send NTP packet */
@@ -62,7 +62,7 @@ void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_del
 	unsigned int buflen = sizeof(packet);
 	unsigned char unique[32];
 	if(cfg) {
-		buflen = add_nts_fields(&buf, cfg);
+		buflen = NTS_add_extension_fields(&buf, cfg);
 		assert(buflen > 0);
 		memcpy(unique, buf+52, 32);
 	}
@@ -83,7 +83,7 @@ void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_del
 	if(cfg) {
 		assert(n > 48);
 		struct NTS_receipt rcpt = { 0, };
-		assert(parse_nts_fields(&buf, n, cfg, &rcpt));
+		assert(NTS_parse_extension_fields(&buf, n, cfg, &rcpt));
 		assert(rcpt.identifier.data);
 		assert(rcpt.identifier.length == 32);
 		assert(memcmp(rcpt.identifier.data, unique, 32) == 0);

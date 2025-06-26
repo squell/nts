@@ -117,11 +117,6 @@ enum extfields {
 	NoOpField        = 0x0200,
 };
 
-/* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.
- *
- * RETURNS
- * 	The amount of data encoded in bytes. Zero bytes encoded indicates an error.
- */
 int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS *nts) {
 	slice buf = { *dest, *dest + 1280 };
 
@@ -248,15 +243,9 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 	*a = ntohs(*a), *b = ntohs(*b);
 }
 
-/* Processed the NTP extension fields in the provided buffer based on the configuration in the NTS struct,
- * and make this information available in the NTS_receipt struct.
- *
- * RETURNS
- * 	The amount of data processed in bytes. Zero bytes encoded indicates an error.
- */
-int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
-	assert(max_len >= 48);
-	slice buf = { *src + 48, *src + max_len };
+int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const struct NTS *nts, struct NTS_receipt *fields) {
+	assert(src_len >= 48 && src_len <= sizeof(*src));
+	slice buf = { *src + 48, *src + src_len };
 	int processed = 0;
 
 	while(capacity(&buf) >= 4) {

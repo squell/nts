@@ -114,7 +114,7 @@ error:
 	return -4;
 }
 
-int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_type type, const uint16_t *data, size_t num_words) {
+static int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_type type, const uint16_t *data, size_t num_words) {
 	size_t bytes_remaining = capacity(message);
 	if(num_words >= 0x8000 || bytes_remaining < 4 + num_words*2) {
 		/* not enough space */

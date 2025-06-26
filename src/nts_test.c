@@ -157,9 +157,9 @@ void test_ntp_field_encoding(void) {
         };
 
         struct NTS_receipt rcpt = { 0, };
-        int len = add_nts_fields(&buffer, &nts);
+        int len = NTS_add_extension_fields(&buffer, &nts);
         assert(len > 48);
-        assert(parse_nts_fields(&buffer, len, &nts, &rcpt));
+        assert(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
         assert(rcpt.identifier.length == 32);
         assert(rcpt.new_cookie.data == NULL);
@@ -167,14 +167,14 @@ void test_ntp_field_encoding(void) {
         assert(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
 
         memset(&rcpt, 0, sizeof(rcpt));
-        len = add_nts_fields(&buffer, &nts);
+        len = NTS_add_extension_fields(&buffer, &nts);
         buffer[0]++;
-        assert(!parse_nts_fields(&buffer, len, &nts, &rcpt));
+        assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
         memset(&rcpt, 0, sizeof(rcpt));
-        len = add_nts_fields(&buffer, &nts);
+        len = NTS_add_extension_fields(&buffer, &nts);
         nts.s2c_key = (uint8_t*)"000000000000000";
-        assert(!parse_nts_fields(&buffer, len, &nts, &rcpt));
+        assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 }
 
 void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS nts, const char *cookie, unsigned char *corrupt) {
@@ -237,7 +237,7 @@ static void test_ntp_field_decoding(void) {
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
 
         struct NTS_receipt rcpt = { 0, };
-        assert(parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+        assert(NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         assert(rcpt.identifier.length == 4);
         assert(memcmp(rcpt.identifier.data, "1234", 4) == 0);
@@ -251,13 +251,13 @@ static void test_ntp_field_decoding(void) {
         encode_record_raw_ext(&p, 0x0104, "1234", 4);
 
         memset(&rcpt, 0, sizeof(rcpt));
-        assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+        assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* no authentication at all */
         p = buffer + 48;
         encode_record_raw(&p, 0x0104, "1234", 4);
         memset(&rcpt, 0, sizeof(rcpt));
-        assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+        assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* malicious unencrypted field */
         p = buffer + 48;
@@ -265,7 +265,7 @@ static void test_ntp_field_decoding(void) {
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
         buffer[48+2] = 0xee;
         memset(&rcpt, 0, sizeof(rcpt));
-        assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+        assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* malicious encrypted field */
         p = buffer + 48;
@@ -275,7 +275,7 @@ static void test_ntp_field_decoding(void) {
         add_encrypted_server_hdr(buffer, &p, nts, cookie, p+34);
 
         memset(&rcpt, 0, sizeof(rcpt));
-        assert(!parse_nts_fields(&buffer, p - buffer, &nts, &rcpt));
+        assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 }
 
 int main(void) {

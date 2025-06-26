@@ -36,13 +36,13 @@ EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type id) {
 }
 #endif
 
-int nts_attach_socket(const char *host, int port, int type);
+int NTS_attach_socket(const char *host, int port, int type);
 
 static BIO *connect_bio(const char *hostname, int port, int blocking) {
 	BIO *bio = BIO_new(BIO_s_socket());
 	if(!bio) return NULL;
 
-	int sock = nts_attach_socket(hostname, port, SOCK_STREAM);
+	int sock = NTS_attach_socket(hostname, port, SOCK_STREAM);
 	if(sock < 0) return NULL;
 	if(!blocking) {
 		int flags;

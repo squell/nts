@@ -28,3 +28,19 @@ This is shared between `qdntp` and `nts_ssl.c`.
 * `nts_fuzz.c`: Code for fuzzing packet decoding.
 
 These perform less error checking since they are meant for execution with ASan and UBsan enabled.
+
+Testing
+-------
+Run unit tests:
+```
+CC="cc -fsanitize=address,undefined" make -B test
+```
+
+To run fuzz tests, make sure you have `afl++` installed:
+```
+CC="afl-clang -fsanitize=address,undefined" make -B fuzz_ntp
+```
+and
+```
+CC="afl-clang -fsanitize=address,undefined" make -B fuzz_ntske
+```

@@ -40,14 +40,56 @@ struct NTS_response {
 	} cookie[9];
 };
 
-int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type *);
+/* Encode a NTS KE request in the buffer of the provided size. If the third argument is not NULL,
+ * it must point to a NULL-terminated array of AEAD_algorithm-types that indicate the preferred AEAD
+ * algorithms (otherwise a sane default it used).
+ *
+ * RETURNS
+ * 	non-zero number of bytes encoded upon success
+ * 	negative value upon failure (not enough room in buffer)
+ */
+int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type[]);
+
+/* Decode a NTS KE reponse in the buffer of the provided size, and write the result to the NTS_reponse
+ * struct.
+ *
+ * RETURNS
+ * 	0 upon success
+ * 	-1 upon failure (writes the error code to NTS_response->error)
+ */
 int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *);
 
+/* The following three functions provide runtime information about the chosen AEAD algorithm:
+ * - key size requirement in bytes
+ * - OpenSSL name of the AEAD algorithm
+ * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
+ */
+
 int NTS_AEAD_key_size(NTS_AEAD_algorithm_type);
-EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type);
+
 const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type);
 
+EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type);
+
+/* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to buffers
+ * that provide key_capacity amount of bytes
+ *
+ * RETURNS
+ * 	0 upon success
+ * 	a negative value upon failure:
+ * 		-1 OpenSSL error
+ * 		-2 not enough space in buffer
+ * 		-3 unkown AEAD
+ */
 int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_capacity);
+
+/* Setup a SSL object that is connected to hostname:port, ready to begin a TLS handshake.
+ * Accepted certificates are loaded using the provided function pointer (recommended: use SSL_CTX_set_default_verify_paths).
+ * To use blocking I/O, set the last argument to true.
+ *
+ * RETURNS
+ * 	A pointer to a ready SSL object, NULL upon failure (in which case the error is stored in NTS_SSL_error)
+ */
 SSL *NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 
 extern thread_local enum NTS_SSL_error_type {

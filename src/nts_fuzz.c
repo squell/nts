@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
                 (void) NTS_decode_response(buffer, len, &rec);
         } else {
                 struct NTS_receipt rcpt = { 0, };
-                (void) parse_nts_fields(&buffer, len, &nts, &rcpt);
+                (void) NTS_parse_extension_fields(&buffer, len, &nts, &rcpt);
         }
 
         return 0;

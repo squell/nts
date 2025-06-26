@@ -29,9 +29,12 @@ test: nts_test
 
 FUZZTIME ?= 3600
 fuzz_ntske: nts_fuzz
-	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_ke -o out -G 1280 -D ./nts_fuzz @@ +
+	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_ke -o out_ntske -G 1280 -D ./nts_fuzz @@ +
+	@! test -e ./out_ntske/default/crashes/README.txt
+
 fuzz_ntp: nts_fuzz
-	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_extfield -o out -g 48 -G 1280 -D ./nts_fuzz @@
+	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_extfield -o out_ntp -g 48 -G 1280 -D ./nts_fuzz @@
+	@! test -e ./out_ntp/default/crashes/README.txt
 
 all: demo qdntp nts_fuzz nts_test
 

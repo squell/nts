@@ -1,0 +1,84 @@
+name: CI
+
+permissions: read-all
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  merge_group:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: build simple NTP
+        run: CC="cc -Werror" make -C src SIV=OPENSSL qdntp
+
+      - name: build simple NTS
+        run: CC="cc -Werror" make -C src SIV=OPENSSL demo
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+
+      - name: configure libaes_siv
+        run: cd libaes_siv && cmake .
+
+      - name: build libaes_siv
+        run: make -C libaes_siv
+
+      - name: run unit test
+        run: CC="cc -fsanitize=address,undefined -Werror" make -C src test
+
+  smoke-test-ntp:
+    needs: unit-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+
+      - name: install AFL
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes afl++
+
+      - name: build fuzz test
+        run: CC="afl-clang -fsanitize=address,undefined -Wno-strict-prototypes -Werror" FUZZTIME=60 make -C src nts_fuzz
+
+      - name: fuzz test NTS responses
+        run: |
+          echo core | sudo tee /proc/sys/kernel/core_pattern
+          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,undefined" FUZZTIME=60 make -C src fuzz_ntp
+
+  smoke-test-ntske:
+    needs: unit-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          submodules: recursive
+
+      - name: install AFL
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes afl++
+
+      - name: build fuzz test
+        run: CC="afl-clang -fsanitize=address,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
+
+      - name: fuzz test NTS responses
+        run: |
+          echo core | sudo tee /proc/sys/kernel/core_pattern
+          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,undefined" FUZZTIME=60 make -C src fuzz_ntske

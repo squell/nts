@@ -62,9 +62,8 @@ void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_del
 	unsigned int buflen = sizeof(packet);
 	unsigned char unique[32];
 	if(cfg) {
-		buflen = NTS_add_extension_fields(&buf, cfg);
+		buflen = NTS_add_extension_fields(&buf, cfg, &unique);
 		assert(buflen > 0);
-		memcpy(unique, buf+52, 32);
 	}
 	assert(write(sock, buf, buflen) == buflen);
 

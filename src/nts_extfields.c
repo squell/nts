@@ -117,16 +117,16 @@ enum extfields {
 	NoOpField        = 0x0200,
 };
 
-int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS *nts) {
+int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS *nts, unsigned char (*uniq_id)[32]) {
 	slice buf = { *dest, *dest + 1280 };
 
 	/* skip beyond regular ntp portion */
 	buf.data += 48;
 
 	/* generate unique identifier */
-	unsigned char rand[32];
-	getrandom(rand, sizeof(rand), 0);
-	check(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand), 16));
+	unsigned char rand_buf[32], *rand = *(uniq_id? uniq_id : &rand_buf);
+	getrandom(rand, sizeof(rand_buf), 0);
+	check(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand_buf), 16));
 
 	/* write cookie field */
 	check(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));

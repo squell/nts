@@ -157,7 +157,7 @@ void test_ntp_field_encoding(void) {
         };
 
         struct NTS_receipt rcpt = { 0, };
-        int len = NTS_add_extension_fields(&buffer, &nts);
+        int len = NTS_add_extension_fields(&buffer, &nts, NULL);
         assert(len > 48);
         assert(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
@@ -167,12 +167,12 @@ void test_ntp_field_encoding(void) {
         assert(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
 
         memset(&rcpt, 0, sizeof(rcpt));
-        len = NTS_add_extension_fields(&buffer, &nts);
+        len = NTS_add_extension_fields(&buffer, &nts, NULL);
         buffer[0]++;
         assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
         memset(&rcpt, 0, sizeof(rcpt));
-        len = NTS_add_extension_fields(&buffer, &nts);
+        len = NTS_add_extension_fields(&buffer, &nts, NULL);
         nts.s2c_key = (uint8_t*)"000000000000000";
         assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 }

@@ -11,7 +11,11 @@ ifneq (${SIV},OPENSSL)
   STATIC += ../libaes_siv/libaes_siv.a
 endif
 
-all: demo qdntp
+demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o
+	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
+
+qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
+	$(CC) $+ -o $@
 
 nts_test: nts_packet.o nts_extfields.o nts_test.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
@@ -29,11 +33,7 @@ fuzz_ntske: nts_fuzz
 fuzz_ntp: nts_fuzz
 	afl-fuzz -V ${FUZZTIME} -i ../fuzz/nts_extfield -o out -g 48 -G 1280 -D ./nts_fuzz @@
 
-qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
-	$(CC) $+ -o $@
-
-demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o ssl_connect.o
-	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
+all: demo qdntp nts_fuzz nts_test
 
 clean:
 	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda

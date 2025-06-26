@@ -117,8 +117,13 @@ enum extfields {
 	NoOpField        = 0x0200,
 };
 
-int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
-	slice buf = { *base, *base + 1280 };
+/* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.
+ *
+ * RETURNS
+ * 	The amount of data encoded in bytes. Zero bytes encoded indicates an error.
+ */
+int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS *nts) {
+	slice buf = { *dest, *dest + 1280 };
 
 	/* skip beyond regular ntp portion */
 	buf.data += 48;
@@ -153,7 +158,7 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
 
 	unsigned char *EF_payload = EF+4+nonce_len;
 	slice info[] = {
-		{ *base, buf.data },  /* aad */
+		{ *dest, buf.data },  /* aad */
 		{ EF+4, EF_payload }, /* nonce */
 		{ NULL },
 	};
@@ -171,7 +176,7 @@ int add_nts_fields(unsigned char (*base)[1280], const struct NTS *nts) {
 
 	check(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
 
-	return buf.data - *base;
+	return buf.data - *dest;
 exit:
 	return 0;
 }
@@ -243,9 +248,15 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 	*a = ntohs(*a), *b = ntohs(*b);
 }
 
-int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
+/* Processed the NTP extension fields in the provided buffer based on the configuration in the NTS struct,
+ * and make this information available in the NTS_receipt struct.
+ *
+ * RETURNS
+ * 	The amount of data processed in bytes. Zero bytes encoded indicates an error.
+ */
+int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t max_len, const struct NTS *nts, struct NTS_receipt *fields) {
 	assert(max_len >= 48);
-	slice buf = { *base + 48, *base + max_len };
+	slice buf = { *src + 48, *src + max_len };
 	int processed = 0;
 
 	while(capacity(&buf) >= 4) {
@@ -268,7 +279,7 @@ int parse_nts_fields(unsigned char (*base)[1280], size_t max_len, const struct N
 				unsigned char *content = nonce + nonce_len;
 
 				slice info[] = {
-					{ *base, buf.data }, /* aad */
+					{ *src, buf.data }, /* aad */
 					{ nonce, content },  /* nonce */
 					{ NULL },
 				};

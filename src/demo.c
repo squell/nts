@@ -10,8 +10,6 @@
 #include "nts_extfields.h"
 #include "sntp.h"
 
-SSL *nts_setup_ssl(const char *hostname, int port, int load_certs(SSL_CTX *), int nonblocking);
-
 unsigned char buffer[65536];
 
 int main(int argc, char **argv)
@@ -23,7 +21,7 @@ int main(int argc, char **argv)
 	int ntp_port = 123;
 	int port = 4460;
 
-	SSL *ssl = nts_setup_ssl(hostname, port, SSL_CTX_set_default_verify_paths, 1);
+	SSL *ssl = NTS_SSL_setup(hostname, port, SSL_CTX_set_default_verify_paths, 1);
 	assert(ssl);
 
 	assert(SSL_connect(ssl) == 1);

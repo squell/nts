@@ -154,7 +154,7 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
 	return (result<0)? result : request.data - buffer;
 }
 
-int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *response) {
+int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agreement *response) {
 	slice raw_response = { buffer, buffer+buf_size };
 	struct NTS_record rec;
 
@@ -162,7 +162,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_respo
 	size_t cookie_nr = 0;
 	bool is_ntp4 = false;
 	char *ntp_server_terminator = NULL;
-	memset(response, 0, sizeof(struct NTS_response));
+	memset(response, 0, sizeof(struct NTS_agreement));
 
 	/* make sure the result is only OK if we really succeed */
 	response->error = NTS_INTERNAL_CLIENT_ERROR;

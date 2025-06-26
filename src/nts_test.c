@@ -25,7 +25,7 @@ static void encode_ptr_len_data(unsigned char **message, uint16_t type, const vo
 
 void test_nts_encoding(void) {
         unsigned char buffer[1000];
-        struct NTS_response rec;
+        struct NTS_agreement rec;
 
         NTS_encode_request(buffer, sizeof buffer, NULL);
         assert(NTS_decode_response(buffer, 1000, &rec) == 0);
@@ -59,7 +59,7 @@ void test_nts_encoding(void) {
 
 void test_nts_decoding(void) {
         unsigned char buffer[0x10000], *p;
-        struct NTS_response rec;
+        struct NTS_agreement rec;
 
         /* empty */
         uint8_t value[2] = { 0, };

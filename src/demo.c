@@ -62,7 +62,7 @@ int main(int argc, char **argv)
 	struct NTS_query nts;
 
 	while(SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
-		struct NTS_response NTS;
+		struct NTS_agreement NTS;
 		assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
 		if(NTS.error >= 0) {
 			printf("NTS error: 0x%04X\n", NTS.error);

@@ -26,7 +26,7 @@ enum NTS_error_type {
 	NTS_SUCCESS = -1,
 };
 
-struct NTS_response {
+struct NTS_agreement {
 	enum NTS_error_type error;
 
 	NTS_AEAD_algorithm_type aead_id;
@@ -55,9 +55,9 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
  *
  * RETURNS
  * 	0 upon success
- * 	-1 upon failure (writes the error code to NTS_response->error)
+ * 	-1 upon failure (writes the error code to NTS_agreement->error)
  */
-int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_response *);
+int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agreement *);
 
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes

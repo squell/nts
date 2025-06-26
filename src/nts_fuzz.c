@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
 
         if(argc > 2) {
                 /* fuzz the nts ke */
-                struct NTS_response rec;
+                struct NTS_agreement rec;
                 (void) NTS_decode_response(buffer, len, &rec);
         } else {
                 struct NTS_receipt rcpt = { 0, };

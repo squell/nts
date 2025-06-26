@@ -161,7 +161,6 @@ void test_ntp_field_encoding(void) {
         assert(len > 48);
         assert(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
-        assert(rcpt.identifier.length == 32);
         assert(rcpt.new_cookie.data == NULL);
         assert(memcmp(buffer + 48 + 36 + 4, cookie, strlen(cookie)) == 0);
         assert(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
@@ -183,7 +182,7 @@ void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, stru
         /* write nonce */
         *p_ptr = pt = (unsigned char*)mempcpy(af+8, "123NONCE", 8) + 16;
         /* write fields */
-        encode_record_raw_ext(p_ptr, 0x0104, "5678", 4);
+        encode_record_raw_ext(p_ptr, 0x0104, "A sharp mind cuts through deceit", 32);
         encode_record_raw_ext(p_ptr, 0x0204, cookie, strlen(cookie));
 
         /* corrupt a byte */
@@ -232,15 +231,16 @@ static void test_ntp_field_decoding(void) {
 
         unsigned char *p =  buffer + 48;
 
+	char ident[32] = "Silence speaks louder than words";
+
         /* this deliberately breaks padding rules and sneaks an encrypted identifier */
-        encode_record_raw_ext(&p, 0x0104, "1234", 4);
+        encode_record_raw_ext(&p, 0x0104, ident, 32);
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
 
         struct NTS_receipt rcpt = { 0, };
         assert(NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
-        assert(rcpt.identifier.length == 4);
-        assert(memcmp(rcpt.identifier.data, "1234", 4) == 0);
+        assert(memcmp(rcpt.identifier, ident, 32) == 0);
         assert(rcpt.new_cookie.data != NULL);
         assert(rcpt.new_cookie.length >= strlen(cookie));
         assert(memcmp(rcpt.new_cookie.data, cookie, strlen(cookie)) == 0);
@@ -248,20 +248,20 @@ static void test_ntp_field_decoding(void) {
         /* same test but no authentication of uniq id */
         p = buffer + 48;
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
-        encode_record_raw_ext(&p, 0x0104, "1234", 4);
+        encode_record_raw_ext(&p, 0x0104, ident, 32);
 
         memset(&rcpt, 0, sizeof(rcpt));
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* no authentication at all */
         p = buffer + 48;
-        encode_record_raw(&p, 0x0104, "1234", 4);
+        encode_record_raw(&p, 0x0104, ident, 32);
         memset(&rcpt, 0, sizeof(rcpt));
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* malicious unencrypted field */
         p = buffer + 48;
-        encode_record_raw_ext(&p, 0x0104, "1234", 4);
+        encode_record_raw_ext(&p, 0x0104, ident, 32);
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
         buffer[48+2] = 0xee;
         memset(&rcpt, 0, sizeof(rcpt));
@@ -269,7 +269,7 @@ static void test_ntp_field_decoding(void) {
 
         /* malicious encrypted field */
         p = buffer + 48;
-        encode_record_raw_ext(&p, 0x0104, "1234", 4);
+        encode_record_raw_ext(&p, 0x0104, ident, 32);
         /* at p+32 the first plaintext data will be written
          * so at p+34 is the MSB of the first field length */
         add_encrypted_server_hdr(buffer, &p, nts, cookie, p+34);

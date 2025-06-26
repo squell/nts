@@ -256,8 +256,8 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 
 		switch(type) {
 			case UniqueIdentifier:
-				fields->identifier.data = buf.data + 4;
-				fields->identifier.length = len - 4;
+				check(len - 4 == 32);
+				fields->identifier = (unsigned char (*)[32])(buf.data + 4);
 				++processed;
 				break;
 			case AuthEncExtFields: {

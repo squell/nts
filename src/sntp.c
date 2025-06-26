@@ -83,9 +83,8 @@ void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtr
 		assert(n > 48);
 		struct NTS_receipt rcpt = { 0, };
 		assert(NTS_parse_extension_fields(&buf, n, cfg, &rcpt));
-		assert(rcpt.identifier.data);
-		assert(rcpt.identifier.length == 32);
-		assert(memcmp(rcpt.identifier.data, unique, 32) == 0);
+		assert(rcpt.identifier);
+		assert(memcmp(rcpt.identifier, unique, 32) == 0);
 		assert(rcpt.new_cookie.data);
 		assert(rcpt.new_cookie.length <= cfg->cookie.length);
 		memcpy(cfg->cookie.data, rcpt.new_cookie.data, rcpt.new_cookie.length);

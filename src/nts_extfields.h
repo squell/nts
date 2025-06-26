@@ -13,7 +13,8 @@ struct NTS_query {
 };
 
 struct NTS_receipt {
-	struct NTS_cookie identifier, new_cookie;
+	unsigned char (*identifier)[32];
+	struct NTS_cookie new_cookie;
 };
 
 /* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.

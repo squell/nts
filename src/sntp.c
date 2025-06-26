@@ -31,7 +31,7 @@ static uint64_t get_current_ntp_time(void) {
 	clock_gettime(CLOCK_REALTIME, &time);
 
 	uint64_t secs = time.tv_sec + 2208988800; /* wrap around is intended */
-	uint64_t frac = time.tv_nsec * 4.294967296;
+	uint64_t frac = time.tv_nsec * ((1ULL<<32) / 1E9L);
 	return secs << 32 | frac;
 }
 

@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
         if(len < 48) return 0;
         int aead_id = NTS_AEAD_AES_SIV_CMAC_256;
 
-        struct NTS nts = (struct NTS) {
+        struct NTS_query nts = (struct NTS_query) {
 #ifndef USE_LIBAES_SIV
                 .cipher = NTS_AEAD_cipher(aead_id),
 #else

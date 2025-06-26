@@ -52,7 +52,7 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 #define check(expr) if(expr); else goto exit;
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS *nts) {
+static int write_encrypted_fields(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS_query *nts) {
 	int result = -1;
 #ifndef USE_LIBAES_SIV
 	int len;
@@ -117,7 +117,7 @@ enum extfields {
 	NoOpField        = 0x0200,
 };
 
-int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS *nts, unsigned char (*uniq_id)[32]) {
+int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query *nts, unsigned char (*uniq_id)[32]) {
 	slice buf = { *dest, *dest + 1280 };
 
 	/* skip beyond regular ntp portion */
@@ -177,7 +177,7 @@ exit:
 }
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS *nts) {
+static int read_encrypted_fields(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS_query *nts) {
 	int result = -1;
 #ifndef USE_LIBAES_SIV
 	int len;
@@ -243,7 +243,7 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char
 	*a = ntohs(*a), *b = ntohs(*b);
 }
 
-int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const struct NTS *nts, struct NTS_receipt *fields) {
+int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const struct NTS_query *nts, struct NTS_receipt *fields) {
 	assert(src_len >= 48 && src_len <= sizeof(*src));
 	slice buf = { *src + 48, *src + src_len };
 	int processed = 0;

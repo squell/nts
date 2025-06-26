@@ -145,7 +145,7 @@ void test_ntp_field_encoding(void) {
 
         char cookie[] = "PAD";
 
-        struct NTS nts = {
+        struct NTS_query nts = {
                 { (uint8_t*)cookie, strlen(cookie) },
                 (uint8_t*)"0123456789abcdef",
                 (uint8_t*)"0123456789abcdef",
@@ -177,7 +177,7 @@ void test_ntp_field_encoding(void) {
         assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 }
 
-void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS nts, const char *cookie, unsigned char *corrupt) {
+void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS_query nts, const char *cookie, unsigned char *corrupt) {
         unsigned char *af = *p_ptr;
         unsigned char *pt;
         /* write nonce */
@@ -219,7 +219,7 @@ static void test_ntp_field_decoding(void) {
 
         char cookie[] = "COOKIE";
 
-        struct NTS nts = {
+        struct NTS_query nts = {
                 { (uint8_t*)cookie, strlen(cookie) },
                 (uint8_t*)"0123456789abcdef",
                 (uint8_t*)"0123456789abcdef",

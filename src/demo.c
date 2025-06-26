@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 	 * Get up to sizeof(buf) bytes of the response. We keep reading until the
 	 * server closes the connection.
 	 */
-	struct NTS nts;
+	struct NTS_query nts;
 
 	while(SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
 		struct NTS_response NTS;
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 		}
 
 		static unsigned char c2s[64], s2c[64];
-		nts = (struct NTS) {
+		nts = (struct NTS_query) {
 #ifndef USE_LIBAES_SIV
 			.cipher = NTS_AEAD_cipher(NTS.aead_id),
 #else

@@ -49,7 +49,7 @@ static uint64_t ntohll(uint64_t x) {
 
 int NTS_attach_socket(const char *host, int port, int type);
 
-void nts_poll(const char *host, int port, struct NTS *cfg, double *roundtrip_delay, double *time_offset) {
+void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtrip_delay, double *time_offset) {
 	int sock = NTS_attach_socket(host, port, SOCK_DGRAM);
 	assert(sock > 0);
 

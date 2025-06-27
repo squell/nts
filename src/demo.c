@@ -112,6 +112,9 @@ int main(int argc, char **argv)
 	printf("roundtrip delay: %f\n", delay);
 	printf("offset: %f\n", offset);
 
+#ifndef USE_LIBAES_SIV
+	EVP_CIPHER_free(nts.cipher);
+#endif
 	SSL_free(ssl);
 	return 0;
  end:

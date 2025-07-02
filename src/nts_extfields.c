@@ -51,10 +51,13 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 
 #define check(expr) if(expr); else goto exit;
 
+/* re-use this datastructure */
+typedef struct NTS_cookie associated_data;
+
 #ifndef USE_LIBAES_SIV
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-static int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS_query *nts) {
+static int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_query *nts) {
 	int result = -1;
 	int len;
 
@@ -65,8 +68,8 @@ static int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
-		check(EVP_EncryptUpdate(state, NULL, &len, info->data, capacity(info)));
-		assert((size_t)len == capacity(info));
+		check(EVP_EncryptUpdate(state, NULL, &len, info->data, info->length));
+		assert((size_t)len == info->length);
 	}
 
 	unsigned char *ctxt_start = ctxt;
@@ -94,7 +97,7 @@ exit:
 #else
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-static int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const slice *info, const struct NTS_query *nts) {
+static int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_query *nts) {
 	int result = -1;
 	AES_SIV_CTX *state = AES_SIV_CTX_new();
 	check(state);
@@ -103,7 +106,7 @@ static int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
-		check(AES_SIV_AssociateData(state, info->data, capacity(info)));
+		check(AES_SIV_AssociateData(state, info->data, info->length));
 	}
 
 	/* encrypt data and write tag */
@@ -157,11 +160,11 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 
 	/* generate the nonce */
 	getrandom(EF+4, nonce_len, 0);
-
 	unsigned char *EF_payload = EF+4+nonce_len;
-	slice info[] = {
-		{ *dest, buf.data },  /* aad */
-		{ EF+4, EF_payload }, /* nonce */
+
+	associated_data info[] = {
+		{ *dest, buf.data - *dest },  /* aad */
+		{ EF+4,  nonce_len },         /* nonce */
 		{ NULL },
 	};
 
@@ -186,7 +189,7 @@ exit:
 #ifndef USE_LIBAES_SIV
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS_query *nts) {
+int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_query *nts) {
 	int result = -1;
 	int len;
 
@@ -203,8 +206,8 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
-		check(EVP_DecryptUpdate(state, NULL, &len, info->data, capacity(info)));
-		assert((size_t)len == capacity(info));
+		check(EVP_DecryptUpdate(state, NULL, &len, info->data, info->length));
+		assert((size_t)len == info->length);
 	}
 
 	unsigned char *ptxt_start = ptxt;
@@ -228,7 +231,7 @@ exit:
 #else
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const slice *info, const struct NTS_query *nts) {
+int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_query *nts) {
 	int result = -1;
 	AES_SIV_CTX *state = AES_SIV_CTX_new();
 	check(state);
@@ -240,7 +243,7 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
-		check(AES_SIV_AssociateData(state, info->data, capacity(info)));
+		check(AES_SIV_AssociateData(state, info->data, info->length));
 	}
 
 	/* decrypt data */
@@ -284,9 +287,9 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 				unsigned char *nonce = buf.data + 8;
 				unsigned char *content = nonce + nonce_len;
 
-				slice info[] = {
-					{ *src, buf.data }, /* aad */
-					{ nonce, content },  /* nonce */
+				associated_data info[] = {
+					{ *src, buf.data - *src }, /* aad */
+					{ nonce, nonce_len },      /* nonce */
 					{ NULL },
 				};
 

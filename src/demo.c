@@ -89,9 +89,8 @@ int main(int argc, char **argv)
 		nts = (struct NTS_query) {
 #ifndef USE_LIBAES_SIV
 			.cipher = NTS_AEAD_cipher(NTS.aead_id),
-#else
-			.key_len = NTS_AEAD_key_size(NTS.aead_id),
 #endif
+			.key_len = NTS_AEAD_key_size(NTS.aead_id),
 			.c2s_key = c2s,
 			.s2c_key = s2c,
 			.cookie = *NTS.cookie,

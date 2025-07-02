@@ -37,7 +37,7 @@ struct NTS_agreement {
 	struct NTS_cookie {
 		unsigned char* data;
 		size_t length;
-	} cookie[9];
+	} cookie[8];
 };
 
 /* Encode a NTS KE request in the buffer of the provided size. If the third argument is not NULL,

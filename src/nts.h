@@ -45,8 +45,8 @@ struct NTS_agreement {
  * algorithms (otherwise a sane default it used).
  *
  * RETURNS
- * 	non-zero number of bytes encoded upon success
- * 	negative value upon failure (not enough room in buffer)
+ *      non-zero number of bytes encoded upon success
+ *      negative value upon failure (not enough room in buffer)
  */
 int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type[]);
 
@@ -54,8 +54,8 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
  * struct.
  *
  * RETURNS
- * 	0 upon success
- * 	-1 upon failure (writes the error code to NTS_agreement->error)
+ *      0 upon success
+ *      -1 upon failure (writes the error code to NTS_agreement->error)
  */
 int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agreement *);
 
@@ -75,11 +75,11 @@ EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type);
  * that provide key_capacity amount of bytes
  *
  * RETURNS
- * 	0 upon success
- * 	a negative value upon failure:
- * 		-1 OpenSSL error
- * 		-2 not enough space in buffer
- * 		-3 unkown AEAD
+ *      0 upon success
+ *      a negative value upon failure:
+ *              -1 OpenSSL error
+ *              -2 not enough space in buffer
+ *              -3 unkown AEAD
  */
 int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_capacity);
 
@@ -88,11 +88,11 @@ int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, uns
  * To use blocking I/O, set the last argument to true.
  *
  * RETURNS
- * 	A pointer to a ready SSL object, NULL upon failure (in which case the error is stored in NTS_SSL_error)
+ *      A pointer to a ready SSL object, NULL upon failure (in which case the error is stored in NTS_SSL_error)
  */
 SSL *NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 
 extern thread_local enum NTS_SSL_error_type {
-        NTS_SSL_INTERNAL_ERROR,
-        NTS_SSL_NO_CONNECTION,
+	NTS_SSL_INTERNAL_ERROR,
+	NTS_SSL_NO_CONNECTION,
 } NTS_SSL_error;

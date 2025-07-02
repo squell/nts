@@ -146,13 +146,10 @@ void test_ntp_field_encoding(void) {
 	char cookie[] = "PAD";
 
 	struct NTS_query nts = {
-#ifndef USE_LIBAES_SIV
-		EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL),
-#endif
 		{ (uint8_t*)cookie, strlen(cookie) },
 		(uint8_t*)"0123456789abcdef",
 		(uint8_t*)"0123456789abcdef",
-		32,
+		NTS_AEAD_AES_SIV_CMAC_256,
 	};
 
 	struct NTS_receipt rcpt = { 0, };
@@ -173,10 +170,6 @@ void test_ntp_field_encoding(void) {
 	len = NTS_add_extension_fields(&buffer, &nts, NULL);
 	nts.s2c_key = (uint8_t*)"000000000000000";
 	assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
-
-#ifndef USE_LIBAES_SIV
-	EVP_CIPHER_free(nts.cipher);
-#endif
 }
 
 void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS_query nts, const char *cookie, unsigned char *corrupt) {
@@ -222,13 +215,10 @@ static void test_ntp_field_decoding(void) {
 	char cookie[] = "COOKIE";
 
 	struct NTS_query nts = {
-#ifndef USE_LIBAES_SIV
-		EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL),
-#endif
 		{ (uint8_t*)cookie, strlen(cookie) },
 		(uint8_t*)"0123456789abcdef",
 		(uint8_t*)"0123456789abcdef",
-		32,
+		NTS_AEAD_AES_SIV_CMAC_256,
 	};
 
 	unsigned char *p =  buffer + 48;
@@ -278,10 +268,6 @@ static void test_ntp_field_decoding(void) {
 
 	memset(&rcpt, 0, sizeof(rcpt));
 	assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
-
-#ifndef USE_LIBAES_SIV
-	EVP_CIPHER_free(nts.cipher);
-#endif
 }
 
 int main(void) {

@@ -69,8 +69,6 @@ int NTS_AEAD_key_size(NTS_AEAD_algorithm_type);
 
 const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type);
 
-EVP_CIPHER *NTS_AEAD_cipher(NTS_AEAD_algorithm_type);
-
 /* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to buffers
  * that provide key_capacity amount of bytes
  *

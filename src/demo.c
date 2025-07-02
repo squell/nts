@@ -87,10 +87,7 @@ int main(int argc, char **argv)
 
 		static unsigned char c2s[64], s2c[64];
 		nts = (struct NTS_query) {
-#ifndef USE_LIBAES_SIV
-			.cipher = NTS_AEAD_cipher(NTS.aead_id),
-#endif
-			.key_len = NTS_AEAD_key_size(NTS.aead_id),
+			.aead_id = NTS.aead_id,
 			.c2s_key = c2s,
 			.s2c_key = s2c,
 			.cookie = *NTS.cookie,
@@ -111,9 +108,6 @@ int main(int argc, char **argv)
 	printf("roundtrip delay: %f\n", delay);
 	printf("offset: %f\n", offset);
 
-#ifndef USE_LIBAES_SIV
-	EVP_CIPHER_free(nts.cipher);
-#endif
 	SSL_free(ssl);
 	return 0;
  end:

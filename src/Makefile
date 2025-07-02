@@ -9,6 +9,8 @@ ifneq (${SIV},OPENSSL)
   endif
   CFLAGS += -I../libaes_siv -DUSE_LIBAES_SIV
   STATIC += ../libaes_siv/libaes_siv.a
+else
+  CFLAGS += -DOPENSSL_WORKAROUND
 endif
 
 demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o nts_crypto.o tcp_connect.o

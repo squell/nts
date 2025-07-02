@@ -3,12 +3,9 @@
 #include "nts.h"
 
 struct NTS_query {
-#ifndef USE_LIBAES_SIV
-	EVP_CIPHER *cipher;
-#endif
 	struct NTS_cookie cookie;
 	const uint8_t *c2s_key, *s2c_key;
-	unsigned int key_len;
+	NTS_AEAD_algorithm_type aead_id;
 };
 
 struct NTS_receipt {

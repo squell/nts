@@ -5,11 +5,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#ifdef USE_LIBAES_SIV
-#  include <aes_siv.h>
-#else
-#  define OPENSSL_WORKAROUND
-#endif
 
 #include "nts_extfields.h"
 #include "nts_crypto.h"

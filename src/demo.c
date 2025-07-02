@@ -78,10 +78,14 @@ int main(int argc, char **argv)
 		ntp_port = FALLBACK(NTS.ntp_port, ntp_port);
 
 		printf("ntp server: %s:%d\n", hostname, ntp_port);
-		for(int i=0; NTS.cookie[i].data; i++) {
+		for(int i=0; i < 8; i++) {
 			printf("cookie%d: ", i+1);
-			for(size_t n=0; n < NTS.cookie[i].length; n++)
-					printf("%02x", NTS.cookie[i].data[n]);
+			if(NTS.cookie[i].data) {
+				for(size_t n=0; n < NTS.cookie[i].length; n++)
+						printf("%02x", NTS.cookie[i].data[n]);
+			} else {
+				printf("<absent>");
+			}
 			printf("\n");
 		}
 

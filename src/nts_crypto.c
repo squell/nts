@@ -3,7 +3,7 @@
 #ifdef USE_LIBAES_SIV
 #  include <aes_siv.h>
 #else
-#  define OPENSSL_WORKAROUND
+#  include <openssl/ssl.h>
 #endif
 #include <assert.h>
 
@@ -14,15 +14,23 @@
 
 #ifndef USE_LIBAES_SIV
 
+EVP_CIPHER *fetch_cipher(NTS_AEAD_algorithm_type id) {
+       const char *name = NTS_AEAD_cipher_name(id);
+       return name? EVP_CIPHER_fetch(NULL, name, NULL) : NULL;
+}
+
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
 int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_query *nts) {
 	int result = -1;
 	int len;
 
+	EVP_CIPHER *cipher = NULL;
 	EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
 	check(state);
 
-	check(EVP_EncryptInit_ex(state, nts->cipher, NULL, nts->c2s_key, NULL));
+	check((cipher = fetch_cipher(nts->aead_id)));
+
+	check(EVP_EncryptInit_ex(state, cipher, NULL, nts->c2s_key, NULL));
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
@@ -49,6 +57,7 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	result = ptxt_len + BLKSIZ;
 exit:
 	EVP_CIPHER_CTX_free(state);
+	EVP_CIPHER_free(cipher);
 	return result;
 }
 
@@ -57,11 +66,14 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	int result = -1;
 	int len;
 
+	EVP_CIPHER *cipher = NULL;
 	EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
 	check(state);
 	check(ctxt_len >= BLKSIZ);
 
-	check(EVP_DecryptInit_ex(state, nts->cipher, NULL, nts->s2c_key, NULL));
+	check((cipher = fetch_cipher(nts->aead_id)));
+
+	check(EVP_DecryptInit_ex(state, cipher, NULL, nts->s2c_key, NULL));
 
 	/* set the AEAD tag */
 	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, BLKSIZ, (unsigned char*)ctxt));
@@ -89,18 +101,34 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	result = ctxt_len;
 exit:
 	EVP_CIPHER_CTX_free(state);
+	EVP_CIPHER_free(cipher);
 	return result;
 }
 
 #else
 
+static int key_length(NTS_AEAD_algorithm_type id) {
+	/* we only support SIV; with -O2 a good compiler optimises this switch() away */
+	switch(id) {
+		default:
+			return 0;
+		case NTS_AEAD_AES_SIV_CMAC_256:
+			return 256/8;
+		case NTS_AEAD_AES_SIV_CMAC_384:
+			return 384/8;
+		case NTS_AEAD_AES_SIV_CMAC_512:
+			return 512/8;
+	}
+}
+
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
 int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_query *nts) {
 	int result = -1;
+
 	AES_SIV_CTX *state = AES_SIV_CTX_new();
 	check(state);
 
-	check(AES_SIV_Init(state, nts->c2s_key, nts->key_len));
+	check(AES_SIV_Init(state, nts->c2s_key, key_length(nts->aead_id)));
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
@@ -123,7 +151,7 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	check(state);
 	check(ctxt_len >= BLKSIZ);
 
-	check(AES_SIV_Init(state, nts->s2c_key, nts->key_len));
+	check(AES_SIV_Init(state, nts->s2c_key, key_length(nts->aead_id)));
 	ctxt += BLKSIZ;
 	ctxt_len -= BLKSIZ;
 

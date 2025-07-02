@@ -14,13 +14,9 @@ int main(int argc, char **argv) {
 	unsigned char buffer[1280];
 	int len = read(file, buffer, 1280);
 	if(len < 48) return 0;
-	int aead_id = NTS_AEAD_AES_SIV_CMAC_256;
 
 	struct NTS_query nts = (struct NTS_query) {
-#ifndef USE_LIBAES_SIV
-		.cipher = NULL,
-#endif
-		.key_len = NTS_AEAD_key_size(aead_id),
+		.aead_id = 0,
 		.c2s_key = (void*)"01234567890abcdef",
 		.s2c_key = (void*)"01234567890abcdef",
 	};

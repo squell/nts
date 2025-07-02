@@ -146,14 +146,13 @@ void test_ntp_field_encoding(void) {
         char cookie[] = "PAD";
 
         struct NTS_query nts = {
+#ifndef USE_LIBAES_SIV
+                EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL),
+#endif
                 { (uint8_t*)cookie, strlen(cookie) },
                 (uint8_t*)"0123456789abcdef",
                 (uint8_t*)"0123456789abcdef",
-#ifndef USE_LIBAES_SIV
-                EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL),
-#else
                 32,
-#endif
         };
 
         struct NTS_receipt rcpt = { 0, };
@@ -223,14 +222,13 @@ static void test_ntp_field_decoding(void) {
         char cookie[] = "COOKIE";
 
         struct NTS_query nts = {
+#ifndef USE_LIBAES_SIV
+                EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL),
+#endif
                 { (uint8_t*)cookie, strlen(cookie) },
                 (uint8_t*)"0123456789abcdef",
                 (uint8_t*)"0123456789abcdef",
-#ifndef USE_LIBAES_SIV
-                EVP_CIPHER_fetch(NULL, "AES-128-SIV", NULL),
-#else
                 32,
-#endif
         };
 
         unsigned char *p =  buffer + 48;

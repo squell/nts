@@ -11,13 +11,13 @@ ifneq (${SIV},OPENSSL)
   STATIC += ../libaes_siv/libaes_siv.a
 endif
 
-demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o tcp_connect.o
+demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o nts_crypto.o tcp_connect.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
 
-nts_test: nts_packet.o nts_extfields.o nts_test.o
+nts_test: nts_packet.o nts_extfields.o nts_test.o nts_crypto.o
 	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
 
 nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
@@ -42,11 +42,11 @@ clean:
 	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda
 
 demo.o: demo.c nts.h nts_extfields.h sntp.h
-nts_extfields.o: nts_extfields.c nts_extfields.h nts.h
+nts_crypto.o: nts_crypto.c nts_crypto.h nts.h nts_extfields.h
+nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
 nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
 nts_test.o: nts_test.c nts.h nts_extfields.h
-nts_fuzz.o: nts_test.c nts.h nts_extfields.h
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

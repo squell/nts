@@ -81,7 +81,8 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 	slice ptxt = { plain_text, plain_text+sizeof(plain_text) };
 	int ptxt_len = write_ntp_ext_field(&ptxt, NoOpField, plain_text, 0, 0);
 #else
-	unsigned char *const plain_text = NULL;
+	/* a dummy pointer -- it has to be non-NULL, but it will not be read from */
+	unsigned char *const plain_text = buf.data;
 	int ptxt_len = 0;
 #endif
 
@@ -159,6 +160,7 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 					uint16_t type, len;
 					decode_hdr(&type, &len, plain.data);
 					check(capacity(&plain) >= len);
+					check(len >= 4);
 
 					/* only care about cookies */
 					switch(type) {

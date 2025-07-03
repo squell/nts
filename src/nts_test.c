@@ -5,6 +5,7 @@
 
 #include "nts.h"
 #include "nts_extfields.h"
+#include "nts_crypto.h"
 
 /* it's the callers job to ensure bounds are not transgressed */
 #define encode_record_raw(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 0)
@@ -143,12 +144,13 @@ void test_nts_decoding(void) {
 void test_ntp_field_encoding(void) {
 	unsigned char buffer[1280];
 
+	unsigned char key[32] = { 0, };
 	char cookie[] = "PAD";
 
 	struct NTS_query nts = {
 		{ (uint8_t*)cookie, strlen(cookie) },
-		(uint8_t*)"0123456789abcdef",
-		(uint8_t*)"0123456789abcdef",
+		key,
+		key,
 		NTS_AEAD_AES_SIV_CMAC_256,
 	};
 
@@ -161,14 +163,16 @@ void test_ntp_field_encoding(void) {
 	assert(memcmp(buffer + 48 + 36 + 4, cookie, strlen(cookie)) == 0);
 	assert(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
 
-	memset(&rcpt, 0, sizeof(rcpt));
-	len = NTS_add_extension_fields(&buffer, &nts, NULL);
-	buffer[0]++;
-	assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
+	for(int i=0; i < len; i++) {
+		memset(&rcpt, 0, sizeof(rcpt));
+		len = NTS_add_extension_fields(&buffer, &nts, NULL);
+		buffer[i]++;
+		assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
+	}
 
 	memset(&rcpt, 0, sizeof(rcpt));
 	len = NTS_add_extension_fields(&buffer, &nts, NULL);
-	nts.s2c_key = (uint8_t*)"000000000000000";
+	nts.s2c_key = (uint8_t[32]){ 1, };
 	assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 }
 
@@ -213,11 +217,12 @@ static void test_ntp_field_decoding(void) {
 	unsigned char buffer[1280];
 
 	char cookie[] = "COOKIE";
+	unsigned char key[32] = { 0, };
 
 	struct NTS_query nts = {
 		{ (uint8_t*)cookie, strlen(cookie) },
-		(uint8_t*)"0123456789abcdef",
-		(uint8_t*)"0123456789abcdef",
+		key,
+		key,
 		NTS_AEAD_AES_SIV_CMAC_256,
 	};
 
@@ -270,7 +275,85 @@ static void test_ntp_field_decoding(void) {
 	assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 }
 
+void test_crypto(void) {
+	unsigned char key[256];
+	unsigned char enc[100], dec[100];
+	const unsigned char plaintext[] = "attack at down";
+
+	for(unsigned i = 0; i < sizeof(key); i++) key[i] = i * 0x11 & 0xFF;
+
+	const associated_data ad[] = {
+		{ (uint8_t*)"FNORD", 5 },
+		{ NULL },
+	};
+
+	/* test roundtrips for all ciphers */
+	for(unsigned id=0; id <= 33; id++) {
+		struct NTS_query nts = { { NULL }, key, key, id };
+		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, &nts);
+		if(len <= 0) continue;
+		assert(NTS_decrypt(dec, enc, len, ad, &nts) == sizeof(plaintext));
+		assert(memcmp(dec, plaintext, sizeof(plaintext)) == 0);
+	}
+
+	/* test in-place roundtrip for the default cipher */
+	struct NTS_query nts = { { NULL }, key, key, NTS_AEAD_AES_SIV_CMAC_256 };
+	memcpy(enc, plaintext, sizeof(plaintext));
+	int len = NTS_encrypt(enc+16, enc, sizeof(plaintext), ad, &nts);
+	assert(len == sizeof(plaintext)+16);
+	assert(NTS_decrypt(enc, enc+16, len, ad, &nts) == sizeof(plaintext));
+	assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
+
+       /* test known vectors AES_SIV_CMAC_256 */
+       {
+
+		uint8_t key[] = {
+			0x7f,0x7e,0x7d,0x7c, 0x7b,0x7a,0x79,0x78, 0x77,0x76,0x75,0x74, 0x73,0x72,0x71,0x70,
+			0x40,0x41,0x42,0x43, 0x44,0x45,0x46,0x47, 0x48,0x49,0x4a,0x4b, 0x4c,0x4d,0x4e,0x4f,
+		};
+
+
+		uint8_t aad1[] = {
+			0x00,0x11,0x22,0x33, 0x44,0x55,0x66,0x77, 0x88,0x99,0xaa,0xbb, 0xcc,0xdd,0xee,0xff,
+			0xde,0xad,0xda,0xda, 0xde,0xad,0xda,0xda, 0xff,0xee,0xdd,0xcc, 0xbb,0xaa,0x99,0x88,
+			0x77,0x66,0x55,0x44, 0x33,0x22,0x11,0x00,
+		};
+		uint8_t aad2[] = {
+			0x10,0x20,0x30,0x40, 0x50,0x60,0x70,0x80, 0x90,0xa0,
+		};
+
+		uint8_t nonce[] = {
+			0x09,0xf9,0x11,0x02, 0x9d,0x74,0xe3,0x5b, 0xd8,0x41,0x56,0xc5, 0x63,0x56,0x88,0xc0,
+		};
+
+		uint8_t pt[] = {
+			0x74,0x68,0x69,0x73, 0x20,0x69,0x73,0x20, 0x73,0x6f,0x6d,0x65, 0x20,0x70,0x6c,0x61,
+			0x69,0x6e,0x74,0x65, 0x78,0x74,0x20,0x74, 0x6f,0x20,0x65,0x6e, 0x63,0x72,0x79,0x70,
+			0x74,0x20,0x75,0x73, 0x69,0x6e,0x67,0x20, 0x53,0x49,0x56,0x2d, 0x41,0x45,0x53
+		};
+		uint8_t ct[] = {
+			0x7b,0xdb,0x6e,0x3b, 0x43,0x26,0x67,0xeb, 0x06,0xf4,0xd1,0x4b, 0xff,0x2f,0xbd,0x0f,
+			0xcb,0x90,0x0f,0x2f, 0xdd,0xbe,0x40,0x43, 0x26,0x60,0x19,0x65, 0xc8,0x89,0xbf,0x17,
+			0xdb,0xa7,0x7c,0xeb, 0x09,0x4f,0xa6,0x63, 0xb7,0xa3,0xf7,0x48, 0xba,0x8a,0xf8,0x29,
+			0xea,0x64,0xad,0x54, 0x4a,0x27,0x2e,0x9c, 0x48,0x5b,0x62,0xa3, 0xfd,0x5c,0x0d,
+		};
+
+		struct NTS_query nts = { { NULL }, key, key, NTS_AEAD_AES_SIV_CMAC_256 };
+		unsigned char out[sizeof(ct)];
+
+		const associated_data info[] = {
+			{ aad1, sizeof(aad1) },
+			{ aad2, sizeof(aad2) },
+			{ nonce, sizeof(nonce) },
+			{ NULL }
+		};
+		assert(NTS_encrypt(out, pt, sizeof(pt), info, &nts) == sizeof(ct));
+		assert(memcmp(out, ct, sizeof(ct)) == 0);
+	}
+}
+
 int main(void) {
+	test_crypto();
 	test_nts_encoding();
 	test_nts_decoding();
 	test_ntp_field_encoding();

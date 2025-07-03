@@ -49,6 +49,6 @@ nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
 nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
-nts_test.o: nts_test.c nts.h nts_extfields.h
+nts_test.o: nts_test.c nts.h nts_extfields.h nts_crypto.h
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

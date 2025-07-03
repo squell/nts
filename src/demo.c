@@ -37,7 +37,9 @@ int main(int argc, char **argv)
 			if(strnlen(*arg, 3) < 3) continue; else
 			parse(AEAD_AES_SIV_CMAC_256); else
 			parse(AEAD_AES_SIV_CMAC_384); else
-			parse(AEAD_AES_SIV_CMAC_512); else {
+			parse(AEAD_AES_SIV_CMAC_512); else
+			parse(AEAD_AES_128_GCM_SIV); else
+			parse(AEAD_AES_256_GCM_SIV); else {
 				printf("unknown AEAD: %s\n", *arg);
 				goto end;
 			}

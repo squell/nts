@@ -7,6 +7,9 @@
 
 #include "nts.h"
 
+/* should we emite the NTS record that forces chrony to be 'compliant' */
+#define CHRONY_WORKAROUND
+
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
 enum NTS_record_type {
@@ -22,6 +25,8 @@ enum NTS_record_type {
 	/* never critical by clients, may be critical by servers */
 	NTS_NTPv4Server = 6,
 	NTS_NTPv4Port = 7,
+	/* https://chrony-project.org/doc/spec/nts-compliant-128gcm.html */
+	NTS_Chrony_BugWorkaround = 1024,
 };
 
 enum NTS_protocol_type {
@@ -149,6 +154,9 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
 	int result;
 	result  = NTS_encode_record_u16(&request, true, NTS_NextProto, proto, ELEMS(proto));
 	result += NTS_encode_record_u16(&request, true, NTS_AEADAlgorithm, aead, aead_len);
+#ifdef CHRONY_WORKAROUND
+	result += NTS_encode_record_u16(&request, false, NTS_Chrony_BugWorkaround, NULL, 0);
+#endif
 	result += NTS_encode_record_u16(&request, true, NTS_EndOfMessage, NULL, 0);
 
 	return (result<0)? result : request.data - buffer;
@@ -255,6 +263,10 @@ static const struct NTS_AEAD_param supported_algos[] = {
 	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
 	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
 	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" },
+#ifndef USE_LIBAES_SIV
+	{ NTS_AEAD_AES_128_GCM_SIV,  128/8, 16, 12, false, true, "AES-128-GCM-SIV" },
+	{ NTS_AEAD_AES_256_GCM_SIV,  256/8, 16, 12, false, true, "AES-256-GCM-SIV" },
+#endif
 };
 
 const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {

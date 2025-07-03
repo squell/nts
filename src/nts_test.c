@@ -283,7 +283,7 @@ void test_crypto(void) {
 	for(unsigned i = 0; i < sizeof(key); i++) key[i] = i * 0x11 & 0xFF;
 
 	const associated_data ad[] = {
-		{ (uint8_t*)"FNORD", 5 },
+		{ (uint8_t*)"XFNORDXXXXXX", 12 },
 		{ NULL },
 	};
 
@@ -348,6 +348,32 @@ void test_crypto(void) {
 		assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(ct));
 		assert(memcmp(out, ct, sizeof(ct)) == 0);
 	}
+
+#ifndef USE_LIBAES_SIV
+	/* test known vectors - AES_128_GCM_SIV */
+	{
+		unsigned char key[16] = { 1 };
+		unsigned char nonce[12] = { 3 };
+		unsigned char aad[1] = { 1 };
+		unsigned char pt[8] = { 2 };
+
+		const associated_data info[] = {
+			{ aad, sizeof(aad) },
+			{ nonce, sizeof(nonce) },
+			{ NULL }
+		};
+
+		uint8_t ct[] = {
+			0x1e,0x6d,0xab,0xa3, 0x56,0x69,0xf4,0x27, 0x3b,0x0a,0x1a,0x25, 0x60,0x96,0x9c,0xdf,
+			0x79,0x0d,0x99,0x75, 0x9a,0xbd,0x15,0x08,
+		};
+
+		unsigned char out[sizeof(ct)];
+
+		assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
+		assert(memcmp(out, ct, sizeof(ct)) == 0);
+	}
+#endif
 }
 
 int main(void) {

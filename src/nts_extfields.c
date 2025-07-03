@@ -11,9 +11,6 @@
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
-/* we use this constant to mark which mentions of 16 refer to the AES cipher block size and which ones don't */
-#define BLKSIZ 16
-
 typedef struct {
 	unsigned char *data;
 	unsigned char *data_end;
@@ -159,11 +156,18 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 				const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
 				assert(aead);
 
-				int plain_len = NTS_decrypt(content+BLKSIZ, content, ciph_len, info, aead, nts->s2c_key);
+#ifdef USE_LIBAES_SIV
+				/* libaes_siv doesn't like aliased data */
+				unsigned char *plaintext = content+16;
+#else
+				unsigned char *plaintext = content;
+#endif
+
+				int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, aead, nts->s2c_key);
 				assert(plain_len < ciph_len);
 				check(plain_len >= 0);
 
-				slice plain = { content+BLKSIZ, content+BLKSIZ + plain_len };
+				slice plain = { plaintext, plaintext + plain_len };
 
 				while(capacity(&plain) >= 4) {
 					uint16_t type, len;

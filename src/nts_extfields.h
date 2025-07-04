@@ -5,7 +5,7 @@
 struct NTS_query {
 	struct NTS_cookie cookie;
 	const uint8_t *c2s_key, *s2c_key;
-	NTS_AEAD_algorithm_type aead_id;
+	struct NTS_AEAD_param cipher;
 };
 
 struct NTS_receipt {

@@ -66,11 +66,9 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 	check(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));
 
 	/* --- cobble together the extension fields extension field --- */
-	const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
-	assert(aead);
 
 	/* this represents "N_REQ" in the RFC */
-	unsigned char const req_nonce_len = aead->nonce_size;
+	unsigned char const req_nonce_len = nts->cipher.nonce_size;
 	unsigned char const nonce_len = req_nonce_len;
 	unsigned char EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
 	assert((nonce_len & 3) == 0);
@@ -98,9 +96,9 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 		{ NULL },
 	};
 
-	assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + aead->block_size);
+	assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + nts->cipher.block_size);
 
-	int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, aead, nts->c2s_key);
+	int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, &nts->cipher, nts->c2s_key);
 	check(ctxt_len >= 0);
 
 	/* add padding if we used a too-short nonce */
@@ -153,9 +151,6 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 					{ NULL },
 				};
 
-				const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
-				assert(aead);
-
 #ifdef USE_LIBAES_SIV
 				/* libaes_siv doesn't like aliased data */
 				unsigned char *plaintext = content+16;
@@ -163,7 +158,7 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 				unsigned char *plaintext = content;
 #endif
 
-				int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, aead, nts->s2c_key);
+				int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, &nts->cipher, nts->s2c_key);
 				assert(plain_len < ciph_len);
 				check(plain_len >= 0);
 

@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 	if(len < 48) return 0;
 
 	struct NTS_query nts = (struct NTS_query) {
-		.aead_id = 15,
+		.cipher = *NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
 		.c2s_key = (void*)"01234567890abcdef",
 		.s2c_key = (void*)"01234567890abcdef",
 	};

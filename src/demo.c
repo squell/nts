@@ -92,7 +92,7 @@ int main(int argc, char **argv)
 
 		static unsigned char c2s[64], s2c[64];
 		nts = (struct NTS_query) {
-			.aead_id = NTS.aead_id,
+			.cipher = *NTS_AEAD_param(NTS.aead_id),
 			.c2s_key = c2s,
 			.s2c_key = s2c,
 			.cookie = *NTS.cookie,

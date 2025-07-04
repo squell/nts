@@ -151,7 +151,7 @@ void test_ntp_field_encoding(void) {
 		{ (uint8_t*)cookie, strlen(cookie) },
 		key,
 		key,
-		NTS_AEAD_AES_SIV_CMAC_256,
+		*NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
 	};
 
 	struct NTS_receipt rcpt = { 0, };
@@ -223,7 +223,7 @@ static void test_ntp_field_decoding(void) {
 		{ (uint8_t*)cookie, strlen(cookie) },
 		key,
 		key,
-		NTS_AEAD_AES_SIV_CMAC_256,
+		*NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
 	};
 
 	unsigned char *p =  buffer + 48;

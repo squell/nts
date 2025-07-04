@@ -15,8 +15,8 @@
 #ifndef USE_LIBAES_SIV
 
 EVP_CIPHER *fetch_cipher(NTS_AEAD_algorithm_type id) {
-       const char *name = NTS_AEAD_cipher_name(id);
-       return name? EVP_CIPHER_fetch(NULL, name, NULL) : NULL;
+       const struct NTS_AEAD_param *aead = NTS_AEAD_param(id);
+       return aead? EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL) : NULL;
 }
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */

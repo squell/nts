@@ -11,6 +11,11 @@ enum {
 	NTS_AEAD_AES_SIV_CMAC_512 = 17,
 };
 
+struct NTS_AEAD_param {
+	uint8_t aead_id, key_size;
+	const char *cipher_name;
+};
+
 enum NTS_error_type {
 	NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
 	NTS_ERROR_BAD_REQUEST = 1,
@@ -65,9 +70,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
  * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
  */
 
-int NTS_AEAD_key_size(NTS_AEAD_algorithm_type);
-
-const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type);
+const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type);
 
 /* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to buffers
  * that provide key_capacity amount of bytes

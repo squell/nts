@@ -213,7 +213,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 				/* confirm that one of the supported AEAD algo's is offered */
 				check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
 				response->aead_id = val;
-				check(NTS_AEAD_cipher_name(response->aead_id), NTS_NO_AEAD);
+				check(NTS_AEAD_param(response->aead_id), NTS_NO_AEAD);
 				break;
 
 			case NTS_NTPv4Cookie:
@@ -251,26 +251,16 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 }
 #undef check
 
-static struct { const char id, key_len, *name; } NTS_supported_aead_algos[] = {
+static const struct NTS_AEAD_param supported_algos[] = {
 	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, "AES-128-SIV" },
 	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, "AES-256-SIV" },
 	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, "AES-192-SIV" },
 };
 
-int NTS_AEAD_key_size(NTS_AEAD_algorithm_type id) {
-	for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
-		if(NTS_supported_aead_algos[i].id == id) {
-			return NTS_supported_aead_algos[i].key_len;
-		}
-	}
-
-	return -1;
-}
-
-const char *NTS_AEAD_cipher_name(NTS_AEAD_algorithm_type id) {
-	for(size_t i=0; i < ELEMS(NTS_supported_aead_algos); i++) {
-		if(NTS_supported_aead_algos[i].id == id) {
-			return NTS_supported_aead_algos[i].name;
+const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
+	for(size_t i=0; i < ELEMS(supported_algos); i++) {
+		if(supported_algos[i].aead_id == id) {
+			return &supported_algos[i];
 		}
 	}
 

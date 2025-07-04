@@ -69,9 +69,8 @@ int main(int argc, char **argv)
 			goto end;
 		}
 
-		const char *cipher = NTS_AEAD_cipher_name(NTS.aead_id);
-		assert(cipher != NULL);
-		printf("selected AEAD: %s\n", cipher);
+		assert(NTS_AEAD_param(NTS.aead_id));
+		printf("selected AEAD: %s\n", NTS_AEAD_param(NTS.aead_id)->cipher_name);
 
 		#define FALLBACK(x, y) (x? x : y)
 		hostname = FALLBACK(NTS.ntp_server, hostname);

@@ -7,7 +7,7 @@
 
 #include "nts.h"
 
-/* should we emite the NTS record that forces chrony to be 'compliant' */
+/* should we emit the NTS record that forces chrony to be 'compliant' */
 #define CHRONY_WORKAROUND
 
 #define ELEMS(array) (sizeof(array) / sizeof(*array))

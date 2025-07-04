@@ -11,6 +11,39 @@
 
 #ifndef USE_LIBAES_SIV
 
+static int process_assoc_data(
+	EVP_CIPHER_CTX *state,
+	const associated_data *info,
+	const struct NTS_AEAD_param *aead,
+	int EVP_CryptInit_ex(EVP_CIPHER_CTX*, const EVP_CIPHER*, ENGINE*, const unsigned char*, const unsigned char*),
+	int EVP_CryptUpdate(EVP_CIPHER_CTX*, unsigned char*, int*, const unsigned char*, int)
+) {
+	/* process the associated data and nonce first */
+	const associated_data *last = NULL;
+	if(aead->nonce_is_iv) {
+		/* workaround for the OpenSSL GCM-SIV interface, where the IV is set directly in
+		 * contradiction to the documentation;
+		 * our interface *does* interpret the last AAD item as the siv/nonce
+		 */
+		assert(info->data);
+		for(last = info; (last+1)->data != NULL; ) {
+			last++;
+		}
+		check(last->length == aead->nonce_size);
+		check(EVP_CryptInit_ex(state, NULL, NULL, NULL, last->data));
+	}
+
+	for( ; info->data && info != last; info++) {
+		int len = 0;
+		check(EVP_CryptUpdate(state, NULL, &len, info->data, info->length));
+		assert((size_t)len == info->length);
+	}
+
+	return 1;
+exit:
+	return 0;
+}
+
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
 int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
 	int result = -1;
@@ -22,29 +55,6 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 
 	check((cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL)));
 
-	check(EVP_EncryptInit_ex(state, cipher, NULL, key, NULL));
-
-	/* process the associated data and nonce first */
-	const associated_data *last = NULL;
-	if(aead->nonce_is_iv) {
-		/* workaround for the OpenSSL GCM-SIV interface, where the IV is set directly in
-		 * contradiction to the documentation;
-		 * our interface *does* interpret the last AAD item as the siv/nonce
-		 */
-		assert(info->data);
-		for(last = info+1; last->data; ) {
-			last++;
-		}
-		last--;
-		check(last->length == aead->nonce_size);
-		check(EVP_EncryptInit_ex(state, NULL, NULL, NULL, last->data));
-	}
-
-	for( ; info->data && info != last; info++) {
-		check(EVP_EncryptUpdate(state, NULL, &len, info->data, info->length));
-		assert((size_t)len == info->length);
-	}
-
 	unsigned char *ctxt_start = ctxt;
 	unsigned char *tag;
 	if(aead->tag_first) {
@@ -53,6 +63,9 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	} else {
 		tag = ctxt + ptxt_len;
 	}
+
+	check(EVP_EncryptInit_ex(state, cipher, NULL, key, NULL));
+	check(process_assoc_data(state, info, aead, EVP_EncryptInit_ex, EVP_EncryptUpdate));
 
 	/* encrypt data */
 	check(EVP_EncryptUpdate(state, ctxt, &len, ptxt, ptxt_len));
@@ -86,8 +99,6 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 
 	check((cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL)));
 
-	check(EVP_DecryptInit_ex(state, cipher, NULL, key, NULL));
-
 	/* set the AEAD tag */
 	const unsigned char *tag;
 	if(aead->tag_first) {
@@ -98,28 +109,10 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	}
 	ctxt_len -= aead->block_size;
 
+	check(EVP_DecryptInit_ex(state, cipher, NULL, key, NULL));
 	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (unsigned char*)tag));
 
-	/* process the associated data and nonce first */
-	const associated_data *last = NULL;
-	if(aead->nonce_is_iv) {
-		/* workaround for the OpenSSL GCM-SIV interface, where the IV is set directly in
-		 * contradiction to the documentation; this interface still interprets the last AAD
-		 * item as the nonce
-		 */
-		assert(info->data);
-		for(last = info+1; last->data; ) {
-			last++;
-		}
-		last--;
-		check(last->length == aead->nonce_size);
-		check(EVP_DecryptInit_ex(state, NULL, NULL, NULL, last->data));
-	}
-
-	for( ; info->data && info != last; info++) {
-		check(EVP_DecryptUpdate(state, NULL, &len, info->data, info->length));
-		assert((size_t)len == info->length);
-	}
+	check(process_assoc_data(state, info, aead, EVP_DecryptInit_ex, EVP_DecryptUpdate));
 
 	unsigned char *ptxt_start = ptxt;
 

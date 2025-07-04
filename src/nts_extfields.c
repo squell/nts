@@ -96,8 +96,12 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 		{ NULL },
 	};
 
-	assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + BLKSIZ);
-	int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, nts);
+	const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
+	assert(aead);
+
+	assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + aead->block_size);
+
+	int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, aead, nts->c2s_key);
 	check(ctxt_len >= 0);
 
 	/* add padding if we used a too-short nonce */
@@ -150,7 +154,10 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 					{ NULL },
 				};
 
-				int plain_len = NTS_decrypt(content+BLKSIZ, content, ciph_len, info, nts);
+				const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
+				assert(aead);
+
+				int plain_len = NTS_decrypt(content+BLKSIZ, content, ciph_len, info, aead, nts->s2c_key);
 				assert(plain_len < ciph_len);
 				check(plain_len >= 0);
 

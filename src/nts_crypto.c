@@ -7,20 +7,12 @@
 #endif
 #include <assert.h>
 
-/* we use this constant to mark which mentions of 16 refer to the AES cipher block size and which ones don't */
-#define BLKSIZ 16
-
 #define check(expr) if(expr); else goto exit;
 
 #ifndef USE_LIBAES_SIV
 
-EVP_CIPHER *fetch_cipher(NTS_AEAD_algorithm_type id) {
-       const struct NTS_AEAD_param *aead = NTS_AEAD_param(id);
-       return aead? EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL) : NULL;
-}
-
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_query *nts) {
+int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
 	int result = -1;
 	int len;
 
@@ -28,9 +20,9 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
 	check(state);
 
-	check((cipher = fetch_cipher(nts->aead_id)));
+	check((cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL)));
 
-	check(EVP_EncryptInit_ex(state, cipher, NULL, nts->c2s_key, NULL));
+	check(EVP_EncryptInit_ex(state, cipher, NULL, key, NULL));
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
@@ -39,7 +31,7 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	}
 
 	unsigned char *ctxt_start = ctxt;
-	ctxt += BLKSIZ;
+	ctxt += aead->block_size;
 
 	/* encrypt data */
 	check(EVP_EncryptUpdate(state, ctxt, &len, ptxt, ptxt_len));
@@ -47,14 +39,14 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	ctxt += len;
 
 	check(EVP_EncryptFinal_ex(state, ctxt, &len));
-	assert(len <= BLKSIZ);
+	assert(len <= aead->block_size);
 	ctxt += len;
-	assert(ctxt - ctxt_start == ptxt_len + BLKSIZ);
+	assert(ctxt - ctxt_start == ptxt_len + aead->block_size);
 
 	/* prepend the AEAD tag */
-	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, BLKSIZ, ctxt_start));
+	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, aead->block_size, ctxt_start));
 
-	result = ptxt_len + BLKSIZ;
+	result = ptxt_len + aead->block_size;
 exit:
 	EVP_CIPHER_CTX_free(state);
 	EVP_CIPHER_free(cipher);
@@ -62,23 +54,23 @@ exit:
 }
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_query *nts) {
+int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
 	int result = -1;
 	int len;
 
 	EVP_CIPHER *cipher = NULL;
 	EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
 	check(state);
-	check(ctxt_len >= BLKSIZ);
+	check(ctxt_len >= aead->block_size);
 
-	check((cipher = fetch_cipher(nts->aead_id)));
+	check((cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL)));
 
-	check(EVP_DecryptInit_ex(state, cipher, NULL, nts->s2c_key, NULL));
+	check(EVP_DecryptInit_ex(state, cipher, NULL, key, NULL));
 
 	/* set the AEAD tag */
-	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, BLKSIZ, (unsigned char*)ctxt));
-	ctxt += BLKSIZ;
-	ctxt_len -= BLKSIZ;
+	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (unsigned char*)ctxt));
+	ctxt += aead->block_size;
+	ctxt_len -= aead->block_size;
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
@@ -94,7 +86,7 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	ptxt += len;
 
 	check(EVP_DecryptFinal_ex(state, ptxt, &len));
-	assert(len <= BLKSIZ);
+	assert(len <= aead->block_size);
 	ptxt += len;
 	assert(ptxt - ptxt_start == ctxt_len);
 
@@ -107,28 +99,15 @@ exit:
 
 #else
 
-static int key_length(NTS_AEAD_algorithm_type id) {
-	/* we only support SIV; with -O2 a good compiler optimises this switch() away */
-	switch(id) {
-		default:
-			return 0;
-		case NTS_AEAD_AES_SIV_CMAC_256:
-			return 256/8;
-		case NTS_AEAD_AES_SIV_CMAC_384:
-			return 384/8;
-		case NTS_AEAD_AES_SIV_CMAC_512:
-			return 512/8;
-	}
-}
-
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_query *nts) {
+int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
 	int result = -1;
+	const int BLKSIZ = 16;
 
 	AES_SIV_CTX *state = AES_SIV_CTX_new();
 	check(state);
 
-	check(AES_SIV_Init(state, nts->c2s_key, key_length(nts->aead_id)));
+	check(AES_SIV_Init(state, key, aead->key_size));
 
 	/* process the associated data first */
 	for( ; info->data; info++) {
@@ -145,13 +124,15 @@ exit:
 }
 
 /* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_query *nts) {
+int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
 	int result = -1;
+	const int BLKSIZ = 16;
+
 	AES_SIV_CTX *state = AES_SIV_CTX_new();
 	check(state);
 	check(ctxt_len >= BLKSIZ);
 
-	check(AES_SIV_Init(state, nts->s2c_key, key_length(nts->aead_id)));
+	check(AES_SIV_Init(state, key, aead->key_size));
 	ctxt += BLKSIZ;
 	ctxt_len -= BLKSIZ;
 

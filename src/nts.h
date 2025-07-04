@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <threads.h>
 #include <openssl/ssl.h>
 
@@ -12,7 +13,8 @@ enum {
 };
 
 struct NTS_AEAD_param {
-	uint8_t aead_id, key_size;
+	uint8_t aead_id, key_size, block_size, nonce_size;
+	bool tag_first, nonce_is_iv;
 	const char *cipher_name;
 };
 

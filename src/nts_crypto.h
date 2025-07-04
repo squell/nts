@@ -16,7 +16,7 @@ typedef struct {
  *
  * RETURNS: the number of bytes in the ciphertext (< 0 indicates an error)
  */
-int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *, const struct NTS_query *);
+int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *, const struct NTS_AEAD_param *, const unsigned char *key);
 
 /* decrypt the data in ctxt of ctxt_len bytes, and write it to ptxt, using the cryptoscheme selected in the NTS_query
  *
@@ -28,4 +28,4 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
  *
  * RETURNS: the number of bytes in the decrypted plaintext (< 0 indicates an error)
  */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *, const struct NTS_query *);
+int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *, const struct NTS_AEAD_param *, const unsigned char *key);

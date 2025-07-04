@@ -289,19 +289,18 @@ void test_crypto(void) {
 
 	/* test roundtrips for all ciphers */
 	for(unsigned id=0; id <= 33; id++) {
-		struct NTS_query nts = { { NULL }, key, key, id };
-		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, &nts);
-		if(len <= 0) continue;
-		assert(NTS_decrypt(dec, enc, len, ad, &nts) == sizeof(plaintext));
+		if(!NTS_AEAD_param(id)) continue;
+		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, NTS_AEAD_param(id), key);
+		assert(len > 0);
+		assert(NTS_decrypt(dec, enc, len, ad, NTS_AEAD_param(id), key) == sizeof(plaintext));
 		assert(memcmp(dec, plaintext, sizeof(plaintext)) == 0);
 	}
 
 	/* test in-place roundtrip for the default cipher */
-	struct NTS_query nts = { { NULL }, key, key, NTS_AEAD_AES_SIV_CMAC_256 };
 	memcpy(enc, plaintext, sizeof(plaintext));
-	int len = NTS_encrypt(enc+16, enc, sizeof(plaintext), ad, &nts);
+	int len = NTS_encrypt(enc+16, enc, sizeof(plaintext), ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key);
 	assert(len == sizeof(plaintext)+16);
-	assert(NTS_decrypt(enc, enc+16, len, ad, &nts) == sizeof(plaintext));
+	assert(NTS_decrypt(enc, enc+16, len, ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(plaintext));
 	assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
        /* test known vectors AES_SIV_CMAC_256 */
@@ -338,7 +337,6 @@ void test_crypto(void) {
 			0xea,0x64,0xad,0x54, 0x4a,0x27,0x2e,0x9c, 0x48,0x5b,0x62,0xa3, 0xfd,0x5c,0x0d,
 		};
 
-		struct NTS_query nts = { { NULL }, key, key, NTS_AEAD_AES_SIV_CMAC_256 };
 		unsigned char out[sizeof(ct)];
 
 		const associated_data info[] = {
@@ -347,7 +345,7 @@ void test_crypto(void) {
 			{ nonce, sizeof(nonce) },
 			{ NULL }
 		};
-		assert(NTS_encrypt(out, pt, sizeof(pt), info, &nts) == sizeof(ct));
+		assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(ct));
 		assert(memcmp(out, ct, sizeof(ct)) == 0);
 	}
 }

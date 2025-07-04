@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
 }
 
 /* these are here to silence the linker */
-#define STUB(name) int name() { return -1; }
+#define STUB(name, val) name() { return val; }
 
-STUB(NTS_decrypt)
-STUB(NTS_encrypt)
+int STUB(NTS_decrypt, -1)
+int STUB(NTS_encrypt, -1)
+void *STUB(NTS_AEAD_param, NULL)

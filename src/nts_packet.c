@@ -252,9 +252,9 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 #undef check
 
 static const struct NTS_AEAD_param supported_algos[] = {
-	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, "AES-128-SIV" },
-	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, "AES-256-SIV" },
-	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, "AES-192-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" },
 };
 
 const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {

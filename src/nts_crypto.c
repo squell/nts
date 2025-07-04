@@ -24,14 +24,35 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 
 	check(EVP_EncryptInit_ex(state, cipher, NULL, key, NULL));
 
-	/* process the associated data first */
-	for( ; info->data; info++) {
+	/* process the associated data and nonce first */
+	const associated_data *last = NULL;
+	if(aead->nonce_is_iv) {
+		/* workaround for the OpenSSL GCM-SIV interface, where the IV is set directly in
+		 * contradiction to the documentation;
+		 * our interface *does* interpret the last AAD item as the siv/nonce
+		 */
+		assert(info->data);
+		for(last = info+1; last->data; ) {
+			last++;
+		}
+		last--;
+		check(last->length == aead->nonce_size);
+		check(EVP_EncryptInit_ex(state, NULL, NULL, NULL, last->data));
+	}
+
+	for( ; info->data && info != last; info++) {
 		check(EVP_EncryptUpdate(state, NULL, &len, info->data, info->length));
 		assert((size_t)len == info->length);
 	}
 
 	unsigned char *ctxt_start = ctxt;
-	ctxt += aead->block_size;
+	unsigned char *tag;
+	if(aead->tag_first) {
+		tag = ctxt;
+		ctxt += aead->block_size;
+	} else {
+		tag = ctxt + ptxt_len;
+	}
 
 	/* encrypt data */
 	check(EVP_EncryptUpdate(state, ctxt, &len, ptxt, ptxt_len));
@@ -41,10 +62,10 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	check(EVP_EncryptFinal_ex(state, ctxt, &len));
 	assert(len <= aead->block_size);
 	ctxt += len;
-	assert(ctxt - ctxt_start == ptxt_len + aead->block_size);
+	assert(ctxt - ctxt_start == ptxt_len + aead->tag_first * aead->block_size);
 
-	/* prepend the AEAD tag */
-	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, aead->block_size, ctxt_start));
+	/* append/prepend the AEAD tag */
+	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, aead->block_size, tag));
 
 	result = ptxt_len + aead->block_size;
 exit:
@@ -68,12 +89,34 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	check(EVP_DecryptInit_ex(state, cipher, NULL, key, NULL));
 
 	/* set the AEAD tag */
-	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (unsigned char*)ctxt));
-	ctxt += aead->block_size;
+	const unsigned char *tag;
+	if(aead->tag_first) {
+		tag = ctxt;
+		ctxt += aead->block_size;
+	} else {
+		tag = ctxt + ctxt_len - aead->block_size;
+	}
 	ctxt_len -= aead->block_size;
 
-	/* process the associated data first */
-	for( ; info->data; info++) {
+	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (unsigned char*)tag));
+
+	/* process the associated data and nonce first */
+	const associated_data *last = NULL;
+	if(aead->nonce_is_iv) {
+		/* workaround for the OpenSSL GCM-SIV interface, where the IV is set directly in
+		 * contradiction to the documentation; this interface still interprets the last AAD
+		 * item as the nonce
+		 */
+		assert(info->data);
+		for(last = info+1; last->data; ) {
+			last++;
+		}
+		last--;
+		check(last->length == aead->nonce_size);
+		check(EVP_DecryptInit_ex(state, NULL, NULL, NULL, last->data));
+	}
+
+	for( ; info->data && info != last; info++) {
 		check(EVP_DecryptUpdate(state, NULL, &len, info->data, info->length));
 		assert((size_t)len == info->length);
 	}
@@ -88,6 +131,7 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	check(EVP_DecryptFinal_ex(state, ptxt, &len));
 	assert(len <= aead->block_size);
 	ptxt += len;
+
 	assert(ptxt - ptxt_start == ctxt_len);
 
 	result = ctxt_len;

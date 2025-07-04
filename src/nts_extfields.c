@@ -69,10 +69,15 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 	check(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));
 
 	/* --- cobble together the extension fields extension field --- */
+	const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
+	assert(aead);
 
-	unsigned char const nonce_len = 16; /* NTS servers want this to be 16 */
+	/* this represents "N_REQ" in the RFC */
+	unsigned char const req_nonce_len = aead->nonce_size;
+	unsigned char const nonce_len = req_nonce_len;
 	unsigned char EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
 	assert((nonce_len & 3) == 0);
+	assert((req_nonce_len & 3) == 0 && req_nonce_len <= 16);
 
 #ifdef OPENSSL_WORKAROUND
 	/* bug in OpenSSL: https://github.com/openssl/openssl/issues/26580,
@@ -96,16 +101,13 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
 		{ NULL },
 	};
 
-	const struct NTS_AEAD_param *aead = NTS_AEAD_param(nts->aead_id);
-	assert(aead);
-
 	assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + aead->block_size);
 
 	int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, aead, nts->c2s_key);
 	check(ctxt_len >= 0);
 
 	/* add padding if we used a too-short nonce */
-	int ef_len = 4 + ctxt_len + (nonce_len < 16? 16 - nonce_len : nonce_len);
+	int ef_len = 4 + ctxt_len + nonce_len + (nonce_len < req_nonce_len)*(req_nonce_len - nonce_len);
 
 	/* set the ciphertext length */
 	ctxt_len = htons(ctxt_len);

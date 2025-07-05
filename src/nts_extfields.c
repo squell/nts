@@ -157,7 +157,6 @@ int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const
 #else
 				unsigned char *plaintext = content;
 #endif
-
 				int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, &nts->cipher, nts->s2c_key);
 				assert(plain_len < ciph_len);
 				check(plain_len >= 0);

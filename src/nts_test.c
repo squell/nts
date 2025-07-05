@@ -290,9 +290,11 @@ void test_crypto(void) {
 	/* test roundtrips for all ciphers */
 	for(unsigned id=0; id <= 33; id++) {
 		if(!NTS_AEAD_param(id)) continue;
+#ifndef USE_GCRYPT
 		EVP_CIPHER *cipher = EVP_CIPHER_fetch(NULL, NTS_AEAD_param(id)->cipher_name, NULL);
 		if(!cipher) continue;
 		EVP_CIPHER_free(cipher);
+#endif
 		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, NTS_AEAD_param(id), key);
 		assert(len > 0);
 		assert(NTS_decrypt(dec, enc, len, ad, NTS_AEAD_param(id), key) == sizeof(plaintext));
@@ -355,9 +357,11 @@ void test_crypto(void) {
 #ifndef USE_LIBAES_SIV
 	/* test known vectors - AES_128_GCM_SIV */
 	{
+#ifndef USE_GCRYPT
 		EVP_CIPHER *cipher = EVP_CIPHER_fetch(NULL, "AES_128_GCM_SIV", NULL);
 		if(!cipher) return;
 		EVP_CIPHER_free(cipher);
+#endif
 
 		unsigned char key[16] = { 1 };
 		unsigned char nonce[12] = { 3 };

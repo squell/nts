@@ -1,0 +1,105 @@
+#include "nts_crypto.h"
+
+#include <assert.h>
+#include <gcrypt.h>
+
+#define check(expr) if(expr); else goto exit;
+
+static int process_assoc_data(
+	gcry_cipher_hd_t handle,
+	const associated_data *info,
+	const struct NTS_AEAD_param *aead
+) {
+	/* process the associated data and nonce first */
+	const associated_data *last = NULL;
+	if(aead->nonce_is_iv) {
+		/* workaround for the GCM-SIV interface, where the IV is set directly in
+		 * contradiction to the documentation; */
+		assert(info->data);
+		for(last = info; (last+1)->data != NULL; ) {
+			last++;
+		}
+		check(last->length == aead->nonce_size);
+		check(gcry_cipher_setiv(handle, last->data, last->length) == GPG_ERR_NO_ERROR);
+	}
+
+	for( ; info->data && info != last; info++) {
+		check(gcry_cipher_authenticate(handle, info->data, info->length) == GPG_ERR_NO_ERROR);
+	}
+
+	return 1;
+exit:
+	return 0;
+}
+
+static int gcrypt_mode(const struct NTS_AEAD_param *aead) {
+	switch(aead->aead_id) {
+		case NTS_AEAD_AES_SIV_CMAC_256:
+		case NTS_AEAD_AES_SIV_CMAC_384:
+		case NTS_AEAD_AES_SIV_CMAC_512:
+			return GCRY_CIPHER_MODE_SIV;
+		case NTS_AEAD_AES_128_GCM_SIV:
+		case NTS_AEAD_AES_256_GCM_SIV:
+			return GCRY_CIPHER_MODE_GCM_SIV;
+		default:
+			assert(!"unreachable");
+	}
+}
+
+/* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
+int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
+	int result = -1;
+
+	gcry_cipher_hd_t handle;
+	check(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
+
+	check(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
+	check(process_assoc_data(handle, info, aead));
+
+	unsigned char *tag;
+	if(aead->tag_first) {
+		tag = ctxt;
+		ctxt += aead->block_size;
+	} else {
+		tag = ctxt + ptxt_len;
+	}
+
+	check(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
+	check(gcry_cipher_encrypt(handle, ctxt, ptxt_len+aead->block_size, ptxt, ptxt_len) == GPG_ERR_NO_ERROR);
+	check(gcry_cipher_gettag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);
+
+	result = ptxt_len + aead->block_size;
+exit:
+	gcry_cipher_close(handle);
+	return result;
+}
+
+/* caller should make sure that there is enough room in ptxt for holding the ciphertext */
+int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
+	int result = -1;
+
+	gcry_cipher_hd_t handle;
+	check(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
+	check(ctxt_len >= aead->block_size);
+
+	check(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
+	check(process_assoc_data(handle, info, aead));
+
+	const unsigned char *tag;
+	if(aead->tag_first) {
+		tag = ctxt;
+		ctxt += aead->block_size;
+	} else {
+		tag = ctxt + ctxt_len - aead->block_size;
+	}
+	ctxt_len -= aead->block_size;
+
+	check(gcry_cipher_set_decryption_tag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);
+	check(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
+	check(gcry_cipher_decrypt(handle, ptxt, ctxt_len, ctxt, ctxt_len) == GPG_ERR_NO_ERROR);
+
+	result = ctxt_len;
+exit:
+	gcry_cipher_close(handle);
+	return result;
+}

@@ -21,7 +21,9 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	}
 
 	/* encrypt data and write tag */
-	check(AES_SIV_EncryptFinal(state, ctxt, ctxt+BLKSIZ, ptxt, ptxt_len));
+	unsigned char tag[16];
+	check(AES_SIV_EncryptFinal(state, tag, ctxt+BLKSIZ, ptxt, ptxt_len));
+	memcpy(ctxt, tag, BLKSIZ);
 
 	result = ptxt_len + BLKSIZ;
 exit:
@@ -48,7 +50,9 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	}
 
 	/* decrypt data */
-	check(AES_SIV_DecryptFinal(state, ptxt, ctxt - BLKSIZ, ctxt, ctxt_len));
+	unsigned char tag[16];
+	memcpy(tag, ctxt - BLKSIZ, BLKSIZ);
+	check(AES_SIV_DecryptFinal(state, ptxt, tag, ctxt, ctxt_len));
 
 	result = ctxt_len;
 exit:

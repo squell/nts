@@ -301,11 +301,11 @@ void test_crypto(void) {
 		assert(memcmp(dec, plaintext, sizeof(plaintext)) == 0);
 	}
 
-	/* test in-place roundtrip for the default cipher */
+	/* test in-place decryption for the default cipher */
 	memcpy(enc, plaintext, sizeof(plaintext));
-	int len = NTS_encrypt(enc+16, enc, sizeof(plaintext), ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key);
+	int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key);
 	assert(len == sizeof(plaintext)+16);
-	assert(NTS_decrypt(enc, enc+16, len, ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(plaintext));
+	assert(NTS_decrypt(enc, enc, len, ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(plaintext));
 	assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
        /* test known vectors AES_SIV_CMAC_256 */

@@ -42,6 +42,20 @@ jobs:
       - name: run unit tests
         run: CC="cc -fsanitize=address,undefined -Werror" make -C src SIV=LIBAES_SIV test
 
+  build-and-test-gcrypt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: install gcrypt
+        run: sudo apt-get install libgcrypt20-dev
+
+      - name: build
+        run: CC="cc -Werror" make -C src SIV=GCRYPT demo qdntp
+
+      - name: run unit tests
+        run: CC="cc -fsanitize=address,undefined -Werror" make -C src SIV=GCRYPT test
+
   static-analysis-openssl:
     runs-on: ubuntu-latest
     steps:
@@ -75,6 +89,22 @@ jobs:
 
       - name: run analysis
         run: scan-build --status-bugs make -C src SIV=LIBAES_SIV
+
+  static-analysis-gcrypt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: install clang-tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang-tools
+
+      - name: install gcrypt
+        run: sudo apt-get install libgcrypt20-dev
+
+      - name: run analysis
+        run: scan-build --status-bugs make -C src SIV=GCRYPT
 
   smoke-test-ntp:
     runs-on: ubuntu-latest

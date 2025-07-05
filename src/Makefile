@@ -3,14 +3,20 @@
 SIV ?= LIBAES_SIV
 
 CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11
-ifneq (${SIV},OPENSSL)
-  ifneq (${SIV}, LIBAES_SIV)
-    $(error SIV must be one of OPENSSL or LIBAES_SIV)
-  endif
+ifeq (${SIV},LIBAES_SIV)
   CFLAGS += -I../libaes_siv -DUSE_LIBAES_SIV
   STATIC += ../libaes_siv/libaes_siv.a
 else
-  CFLAGS += -DOPENSSL_WORKAROUND
+  ifeq (${SIV}, GCRYPT)
+    CFLAGS += -DUSE_GCRYPT
+    STATIC += -lgcrypt
+  else
+    ifeq (${SIV}, OPENSSL)
+      CFLAGS += -DOPENSSL_WORKAROUND
+    else
+      $(error "SIV must be either OPENSSL, GCRYPT, or LIBAES_SIV")
+    endif
+  endif
 endif
 
 demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o nts_crypto.o tcp_connect.o

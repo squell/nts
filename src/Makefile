@@ -5,28 +5,31 @@ SIV ?= LIBAES_SIV
 CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11
 ifeq (${SIV},LIBAES_SIV)
   CFLAGS += -I../libaes_siv -DUSE_LIBAES_SIV
-  STATIC += ../libaes_siv/libaes_siv.a
+  LINK += ../libaes_siv/libaes_siv.a
+  CRYPTO = crypto_libaes_siv
 else
   ifeq (${SIV}, GCRYPT)
     CFLAGS += -DUSE_GCRYPT
-    STATIC += -lgcrypt
+    LINK += -lgcrypt
+    CRYPTO = crypto_gcrypt
   else
     ifeq (${SIV}, OPENSSL)
       CFLAGS += -DOPENSSL_WORKAROUND
+      CRYPTO = crypto
     else
       $(error "SIV must be either OPENSSL, GCRYPT, or LIBAES_SIV")
     endif
   endif
 endif
 
-demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o nts_crypto.o tcp_connect.o
-	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
+demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o nts_${CRYPTO}.o tcp_connect.o
+	$(CC) $+ ${LINK} -lssl -lcrypto -o $@
 
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
 
-nts_test: nts_packet.o nts_extfields.o nts_test.o nts_crypto.o
-	$(CC) $+ ${STATIC} -lssl -lcrypto -o $@
+nts_test: nts_packet.o nts_extfields.o nts_test.o nts_${CRYPTO}.o
+	$(CC) $+ ${LINK} -lssl -lcrypto -o $@
 
 nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
 	$(CC) $+ ${CFLAGS} -o $@
@@ -50,7 +53,7 @@ clean:
 	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda
 
 demo.o: demo.c nts.h nts_extfields.h sntp.h
-nts_crypto.o: nts_crypto.c nts_crypto.h nts.h nts_extfields.h
+nts_${CRYPTO}.o: nts_${CRYPTO}.c nts_crypto.h nts.h nts_extfields.h
 nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
 nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h

@@ -90,12 +90,12 @@ jobs:
           sudo apt-get install --yes afl++
 
       - name: build fuzz test
-        run: CC="afl-clang -fsanitize=address,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
+        run: CC="afl-clang -fsanitize=address,integer,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
 
       - name: fuzz test NTS responses
         run: |
           echo core | sudo tee /proc/sys/kernel/core_pattern
-          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,undefined" FUZZTIME=90 make -C src fuzz_ntp
+          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,integer,undefined" FUZZTIME=90 make -C src fuzz_ntp
 
   smoke-test-ntske:
     runs-on: ubuntu-latest
@@ -111,9 +111,9 @@ jobs:
           sudo apt-get install --yes afl++
 
       - name: build fuzz test
-        run: CC="afl-clang -fsanitize=address,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
+        run: CC="afl-clang -fsanitize=address,integer,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
 
       - name: fuzz test NTS responses
         run: |
           echo core | sudo tee /proc/sys/kernel/core_pattern
-          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,undefined" FUZZTIME=90 make -C src fuzz_ntske
+          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,integer,undefined" FUZZTIME=90 make -C src fuzz_ntske

@@ -33,14 +33,14 @@ Testing
 -------
 Run unit tests:
 ```
-CC="cc -fsanitize=address,undefined" make -B test
+CC="cc -fsanitize=address,integer,undefined" make -B test
 ```
 
 To run fuzz tests, make sure you have `afl++` installed:
 ```
-CC="afl-clang -fsanitize=address,undefined" make -B fuzz_ntp
+CC="afl-clang -fsanitize=address,integer,undefined" make -B fuzz_ntp
 ```
 and
 ```
-CC="afl-clang -fsanitize=address,undefined" make -B fuzz_ntske
+CC="afl-clang -fsanitize=address,integer,undefined" make -B fuzz_ntske
 ```

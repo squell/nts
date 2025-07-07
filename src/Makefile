@@ -1,4 +1,4 @@
-.PHONY: all clean test fuzz fuzz_ntp fuzz_ntske
+.PHONY: all clean test fuzz fuzz_ntp fuzz_ntske demo nts_test
 
 CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11
 CRYPTO ?= openssl
@@ -38,7 +38,7 @@ fuzz_ntp: nts_fuzz
 	afl-fuzz -V $(FUZZTIME) -i ../fuzz/nts_extfield -o out_ntp -g 48 -G 1280 -D ./nts_fuzz @@
 	@! test -e ./out_ntp/default/crashes/README.txt
 
-all: demo qdntp nts_fuzz nts_test nts_crypto.o nts_crypto_libaes_siv.o nts_crypto_gcrypt.o
+all: qdntp nts_fuzz nts_test nts_crypto_openssl.o nts_crypto_libaes_siv.o nts_crypto_gcrypt.o demo
 
 clean:
 	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda

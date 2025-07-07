@@ -7,6 +7,8 @@
 #include "nts_extfields.h"
 #include "nts_crypto.h"
 
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 /* it's the callers job to ensure bounds are not transgressed */
 #define encode_record_raw(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 0)
 #define encode_record_raw_ext(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 1)

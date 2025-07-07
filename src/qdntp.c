@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
 }
 
 /* these are here to silence the linker */
+#pragma GCC diagnostic ignored "-Wstrict-prototypes"
 #define STUB(name, val) name() { return val; }
 
 int STUB(NTS_decrypt, -1)

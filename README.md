@@ -33,7 +33,7 @@ Testing
 -------
 Run unit tests:
 ```
-CC="cc -fsanitize=address,integer,undefined" make -B test
+CC="cc -fsanitize=address,undefined" make -B test
 ```
 
 To run fuzz tests, make sure you have `afl++` installed:

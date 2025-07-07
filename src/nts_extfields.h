@@ -17,10 +17,13 @@ struct NTS_receipt {
  * If identifier is not NULL, it will hold the generated unique identifier upon success.
  *
  * RETURNS
- *      The amount of data encoded in bytes. Zero bytes encoded indicates an error (in which case the contents
- *      of uniq_ident are unspecified)
+ *      The amount of data encoded in bytes. Zero bytes encoded indicates an error (in which case the
+ *      contents of uniq_ident are unspecified)
  */
-int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query *nts, unsigned char (*identifier)[32]);
+int NTS_add_extension_fields(
+		unsigned char (*dest)[1280],
+		const struct NTS_query *nts,
+		unsigned char (*identifier)[32]);
 
 /* Processed the NTP extension fields in the provided buffer based on the configuration in the NTS struct,
  * and make this information available in the NTS_receipt struct.
@@ -28,4 +31,8 @@ int NTS_add_extension_fields(unsigned char (*dest)[1280], const struct NTS_query
  * RETURNS
  *      The amount of data processed in bytes. Zero bytes encoded indicates an error.
  */
-int NTS_parse_extension_fields(unsigned char (*src)[1280], size_t src_len, const struct NTS_query *, struct NTS_receipt *);
+int NTS_parse_extension_fields(
+		unsigned char (*src)[1280],
+		size_t src_len,
+		const struct NTS_query *,
+		struct NTS_receipt *);

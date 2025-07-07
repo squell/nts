@@ -111,7 +111,7 @@ static int NTS_decode_record(slice *message, struct NTS_record *record) {
 		case NTS_NTPv4Cookie:
 			break;
 	}
-	
+
 	return 0;
 
 error:
@@ -119,7 +119,12 @@ error:
 	return -4;
 }
 
-static int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_type type, const uint16_t *data, size_t num_words) {
+static int NTS_encode_record_u16(
+		slice *message,
+		bool critical,
+		enum NTS_record_type type,
+		const uint16_t *data, size_t num_words) {
+
 	size_t bytes_remaining = capacity(message);
 	if(num_words >= 0x8000 || bytes_remaining < 4 + num_words*2) {
 		/* not enough space */
@@ -140,11 +145,20 @@ static int NTS_encode_record_u16(slice *message, bool critical, enum NTS_record_
 	return 0;
 }
 
-int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type *preferred_crypto) {
+int NTS_encode_request(
+		unsigned char *buffer,
+		size_t buf_size,
+		const NTS_AEAD_algorithm_type *preferred_crypto) {
+
 	slice request = { buffer, buffer + buf_size };
 
 	const uint16_t proto[] = { NTS_PROTO_NTPv4 };
-	const uint16_t aead_default[] = { NTS_AEAD_AES_SIV_CMAC_256, NTS_AEAD_AES_SIV_CMAC_384, NTS_AEAD_AES_SIV_CMAC_512 }, *aead = aead_default;
+	const uint16_t aead_default[] = {
+		NTS_AEAD_AES_SIV_CMAC_256,
+		NTS_AEAD_AES_SIV_CMAC_384,
+		NTS_AEAD_AES_SIV_CMAC_512
+	}, *aead = aead_default;
+
 	size_t aead_len = ELEMS(aead_default);
 	if(preferred_crypto) {
 		aead = preferred_crypto;

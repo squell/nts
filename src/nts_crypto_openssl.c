@@ -27,12 +27,16 @@ const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
 
 #define check(expr) if(expr); else goto exit;
 
+typedef int init_f(EVP_CIPHER_CTX*, const EVP_CIPHER*, ENGINE*, const unsigned char*, const unsigned char*);
+typedef int upd_f(EVP_CIPHER_CTX*, unsigned char*, int*, const unsigned char*, int);
+
 static int process_assoc_data(
 	EVP_CIPHER_CTX *state,
 	const associated_data *info,
 	const struct NTS_AEAD_param *aead,
-	int EVP_CryptInit_ex(EVP_CIPHER_CTX*, const EVP_CIPHER*, ENGINE*, const unsigned char*, const unsigned char*),
-	int EVP_CryptUpdate(EVP_CIPHER_CTX*, unsigned char*, int*, const unsigned char*, int)
+
+	init_f EVP_CryptInit_ex,
+	upd_f EVP_CryptUpdate
 ) {
 	/* process the associated data and nonce first */
 	const associated_data *last = NULL;
@@ -60,8 +64,13 @@ exit:
 	return 0;
 }
 
-/* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
+int NTS_encrypt(unsigned char *ctxt,
+		const unsigned char *ptxt,
+		int ptxt_len,
+		const associated_data *info,
+		const struct NTS_AEAD_param *aead,
+		const unsigned char *key) {
+
 	int result = -1;
 	int len;
 
@@ -103,8 +112,13 @@ exit:
 	return result;
 }
 
-/* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
+int NTS_decrypt(unsigned char *ptxt,
+		const unsigned char *ctxt,
+		int ctxt_len,
+		const associated_data *info,
+		const struct NTS_AEAD_param *aead,
+		const unsigned char *key) {
+
 	int result = -1;
 	int len;
 

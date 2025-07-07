@@ -76,8 +76,8 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 
 const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type);
 
-/* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to buffers
- * that provide key_capacity amount of bytes
+/* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to
+ * buffers that provide key_capacity amount of bytes
  *
  * RETURNS
  *      0 upon success
@@ -86,14 +86,21 @@ const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type);
  *              -2 not enough space in buffer
  *              -3 unkown AEAD
  */
-int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, unsigned char *c2s, unsigned char *s2c, int key_capacity);
+int NTS_SSL_extract_keys(
+		SSL *,
+		NTS_AEAD_algorithm_type,
+		unsigned char *c2s,
+		unsigned char *s2c,
+		int key_capacity);
 
 /* Setup a SSL object that is connected to hostname:port, ready to begin a TLS handshake.
- * Accepted certificates are loaded using the provided function pointer (recommended: use SSL_CTX_set_default_verify_paths).
+ * Accepted certificates are loaded using the provided function pointer
+ *      (recommended: SSL_CTX_set_default_verify_paths).
+ *
  * To use blocking I/O, set the last argument to true.
  *
  * RETURNS
- *      A pointer to a ready SSL object, NULL upon failure (in which case the error is stored in NTS_SSL_error)
+ *      A pointer to a ready SSL object, NULL upon failure (and then the error is stored in NTS_SSL_error)
  */
 SSL *NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 

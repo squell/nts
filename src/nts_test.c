@@ -13,7 +13,13 @@
 #define encode_record_raw(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 0)
 #define encode_record_raw_ext(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 1)
 
-static void encode_ptr_len_data(unsigned char **message, uint16_t type, const void *data, uint16_t len, int count_hdr) {
+static void encode_ptr_len_data(
+		unsigned char **message,
+		uint16_t type,
+		const void *data,
+		uint16_t len,
+		int count_hdr) {
+
 	unsigned char hdr[4] = {
 		type >> 8,
 		type & 0xFF,
@@ -178,7 +184,13 @@ void test_ntp_field_encoding(void) {
 	assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 }
 
-void add_encrypted_server_hdr(unsigned char *buffer, unsigned char **p_ptr, struct NTS_query nts, const char *cookie, unsigned char *corrupt) {
+void add_encrypted_server_hdr(
+		unsigned char *buffer,
+		unsigned char **p_ptr,
+		struct NTS_query nts,
+		const char *cookie,
+		unsigned char *corrupt) {
+
 	unsigned char *af = *p_ptr;
 	unsigned char *pt;
 	/* write nonce */

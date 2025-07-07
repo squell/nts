@@ -66,8 +66,13 @@ static int gcrypt_mode(const struct NTS_AEAD_param *aead) {
 	}
 }
 
-/* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */
-int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
+int NTS_encrypt(unsigned char *ctxt,
+		const unsigned char *ptxt,
+		int ptxt_len,
+		const associated_data *info,
+		const struct NTS_AEAD_param *aead,
+		const unsigned char *key) {
+
 	int result = -1;
 
 	gcry_cipher_hd_t handle;
@@ -94,8 +99,13 @@ exit:
 	return result;
 }
 
-/* caller should make sure that there is enough room in ptxt for holding the ciphertext */
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const associated_data *info, const struct NTS_AEAD_param *aead, const unsigned char *key) {
+int NTS_decrypt(unsigned char *ptxt,
+		const unsigned char *ctxt,
+		int ctxt_len,
+		const associated_data *info,
+		const struct NTS_AEAD_param *aead,
+		const unsigned char *key) {
+
 	int result = -1;
 
 	gcry_cipher_hd_t handle;

@@ -7,14 +7,14 @@
 #include "nts.h"
 #include "nts_extfields.h"
 
-void eat(volatile const unsigned char* buf, size_t size) {
+void eat(volatile const uint8_t* buf, size_t size) {
 	if(buf) while(size) (void)buf[size--];
 }
 
 /* this program does no sanity checking as it is meant for fuzzing only */
 int main(int argc, char **argv) {
 	int file = open(argv[1], O_RDONLY);
-	unsigned char buffer[1280];
+	uint8_t buffer[1280];
 	int len = read(file, buffer, 1280);
 	if(len < 48) return 0;
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 
 #define BLKSIZ 16
 
-int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, const void *info, const void *nts) {
+int NTS_encrypt(uint8_t *ctxt, const uint8_t *ptxt, int ptxt_len, const void *info, const void *nts) {
 	(void) info;
 	(void) nts;
 	memset(ctxt, 0xEE, BLKSIZ);
@@ -54,7 +54,7 @@ int NTS_encrypt(unsigned char *ctxt, const unsigned char *ptxt, int ptxt_len, co
 	return ptxt_len + BLKSIZ;
 }
 
-int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, const void *info, const void *nts) {
+int NTS_decrypt(uint8_t *ptxt, const uint8_t *ctxt, int ctxt_len, const void *info, const void *nts) {
 	(void) info;
 	(void) nts;
 	if(ctxt_len < BLKSIZ) return -1;

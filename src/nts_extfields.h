@@ -9,7 +9,7 @@ struct NTS_query {
 };
 
 struct NTS_receipt {
-	unsigned char (*identifier)[32];
+	uint8_t (*identifier)[32];
 	struct NTS_cookie new_cookie;
 };
 
@@ -21,9 +21,9 @@ struct NTS_receipt {
  *      contents of uniq_ident are unspecified)
  */
 int NTS_add_extension_fields(
-		unsigned char (*dest)[1280],
+		uint8_t (*dest)[1280],
 		const struct NTS_query *nts,
-		unsigned char (*identifier)[32]);
+		uint8_t (*identifier)[32]);
 
 /* Processed the NTP extension fields in the provided buffer based on the configuration in the NTS struct,
  * and make this information available in the NTS_receipt struct.
@@ -32,7 +32,7 @@ int NTS_add_extension_fields(
  *      The amount of data processed in bytes. Zero bytes encoded indicates an error.
  */
 int NTS_parse_extension_fields(
-		unsigned char (*src)[1280],
+		uint8_t (*src)[1280],
 		size_t src_len,
 		const struct NTS_query *,
 		struct NTS_receipt *);

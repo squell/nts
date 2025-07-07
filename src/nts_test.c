@@ -14,13 +14,13 @@
 #define encode_record_raw_ext(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 1)
 
 static void encode_ptr_len_data(
-		unsigned char **message,
+		uint8_t **message,
 		uint16_t type,
 		const void *data,
 		uint16_t len,
 		int count_hdr) {
 
-	unsigned char hdr[4] = {
+	uint8_t hdr[4] = {
 		type >> 8,
 		type & 0xFF,
 		(len + count_hdr*sizeof(hdr)) >> 8,
@@ -33,7 +33,7 @@ static void encode_ptr_len_data(
 }
 
 void test_nts_encoding(void) {
-	unsigned char buffer[1000];
+	uint8_t buffer[1000];
 	struct NTS_agreement rec;
 
 	NTS_encode_request(buffer, sizeof buffer, NULL);
@@ -67,7 +67,7 @@ void test_nts_encoding(void) {
 }
 
 void test_nts_decoding(void) {
-	unsigned char buffer[0x10000], *p;
+	uint8_t buffer[0x10000], *p;
 	struct NTS_agreement rec;
 
 	/* empty */
@@ -150,9 +150,9 @@ void test_nts_decoding(void) {
 }
 
 void test_ntp_field_encoding(void) {
-	unsigned char buffer[1280];
+	uint8_t buffer[1280];
 
-	unsigned char key[32] = { 0, };
+	uint8_t key[32] = { 0, };
 	char cookie[] = "PAD";
 
 	struct NTS_query nts = {
@@ -185,16 +185,16 @@ void test_ntp_field_encoding(void) {
 }
 
 void add_encrypted_server_hdr(
-		unsigned char *buffer,
-		unsigned char **p_ptr,
+		uint8_t *buffer,
+		uint8_t **p_ptr,
 		struct NTS_query nts,
 		const char *cookie,
-		unsigned char *corrupt) {
+		uint8_t *corrupt) {
 
-	unsigned char *af = *p_ptr;
-	unsigned char *pt;
+	uint8_t *af = *p_ptr;
+	uint8_t *pt;
 	/* write nonce */
-	*p_ptr = pt = (unsigned char*)mempcpy(af+8, "123NONCE", 8) + 16;
+	*p_ptr = pt = (uint8_t*)mempcpy(af+8, "123NONCE", 8) + 16;
 	/* write fields */
 	encode_record_raw_ext(p_ptr, 0x0104, "A sharp mind cuts through deceit", 32);
 	encode_record_raw_ext(p_ptr, 0x0204, cookie, strlen(cookie));
@@ -228,10 +228,10 @@ void add_encrypted_server_hdr(
 }
 
 static void test_ntp_field_decoding(void) {
-	unsigned char buffer[1280];
+	uint8_t buffer[1280];
 
 	char cookie[] = "COOKIE";
-	unsigned char key[32] = { 0, };
+	uint8_t key[32] = { 0, };
 
 	struct NTS_query nts = {
 		{ (uint8_t*)cookie, strlen(cookie) },
@@ -240,7 +240,7 @@ static void test_ntp_field_decoding(void) {
 		*NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
 	};
 
-	unsigned char *p =  buffer + 48;
+	uint8_t *p =  buffer + 48;
 
 	char ident[32] = "Silence speaks louder than words";
 
@@ -290,9 +290,9 @@ static void test_ntp_field_decoding(void) {
 }
 
 void test_crypto(void) {
-	unsigned char key[256];
-	unsigned char enc[100], dec[100];
-	const unsigned char plaintext[] = "attack at down";
+	uint8_t key[256];
+	uint8_t enc[100], dec[100];
+	const uint8_t plaintext[] = "attack at down";
 
 	for(unsigned i = 0; i < sizeof(key); i++) key[i] = i * 0x11 & 0xFF;
 
@@ -351,7 +351,7 @@ void test_crypto(void) {
 			0xea,0x64,0xad,0x54, 0x4a,0x27,0x2e,0x9c, 0x48,0x5b,0x62,0xa3, 0xfd,0x5c,0x0d,
 		};
 
-		unsigned char out[sizeof(ct)];
+		uint8_t out[sizeof(ct)];
 
 		const associated_data info[] = {
 			{ aad1, sizeof(aad1) },
@@ -365,10 +365,10 @@ void test_crypto(void) {
 
 	/* test known vectors - AES_128_GCM_SIV */
 	if(NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV)) {
-		unsigned char key[16] = { 1 };
-		unsigned char nonce[12] = { 3 };
-		unsigned char aad[1] = { 1 };
-		unsigned char pt[8] = { 2 };
+		uint8_t key[16] = { 1 };
+		uint8_t nonce[12] = { 3 };
+		uint8_t aad[1] = { 1 };
+		uint8_t pt[8] = { 2 };
 
 		const associated_data info[] = {
 			{ aad, sizeof(aad) },
@@ -381,7 +381,7 @@ void test_crypto(void) {
 			0x79,0x0d,0x99,0x75, 0x9a,0xbd,0x15,0x08,
 		};
 
-		unsigned char out[sizeof(ct)];
+		uint8_t out[sizeof(ct)];
 
 		assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
 		assert(memcmp(out, ct, sizeof(ct)) == 0);

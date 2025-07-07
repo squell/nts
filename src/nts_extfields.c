@@ -17,8 +17,8 @@
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 typedef struct {
-	unsigned char *data;
-	unsigned char *data_end;
+	uint8_t *data;
+	uint8_t *data_end;
 } slice;
 
 static size_t capacity(const slice *slice) {
@@ -57,9 +57,9 @@ enum extfields {
 #define check(expr) if(expr); else goto exit;
 
 int NTS_add_extension_fields(
-		unsigned char (*dest)[1280],
+		uint8_t (*dest)[1280],
 		const struct NTS_query *nts,
-		unsigned char (*uniq_id)[32]) {
+		uint8_t (*uniq_id)[32]) {
 
 	slice buf = { *dest, *dest + 1280 };
 
@@ -67,7 +67,7 @@ int NTS_add_extension_fields(
 	buf.data += 48;
 
 	/* generate unique identifier */
-	unsigned char rand_buf[32], *rand = *(uniq_id? uniq_id : &rand_buf);
+	uint8_t rand_buf[32], *rand = *(uniq_id? uniq_id : &rand_buf);
 	getrandom(rand, sizeof(rand_buf), 0);
 	check(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand_buf), 16));
 
@@ -77,27 +77,27 @@ int NTS_add_extension_fields(
 	/* --- cobble together the extension fields extension field --- */
 
 	/* this represents "N_REQ" in the RFC */
-	unsigned char const req_nonce_len = nts->cipher.nonce_size;
-	unsigned char const nonce_len = req_nonce_len;
-	unsigned char EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
+	uint8_t const req_nonce_len = nts->cipher.nonce_size;
+	uint8_t const nonce_len = req_nonce_len;
+	uint8_t EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
 	assert((nonce_len & 3) == 0);
 	assert((req_nonce_len & 3) == 0 && req_nonce_len <= 16);
 
 #ifdef OPENSSL_WORKAROUND
 	/* bug in OpenSSL: https://github.com/openssl/openssl/issues/26580,
 	   which means that a ciphertext HAS TO BE PRESENT */
-	unsigned char plain_text[4];
+	uint8_t plain_text[4];
 	slice ptxt = { plain_text, plain_text+sizeof(plain_text) };
 	int ptxt_len = write_ntp_ext_field(&ptxt, NoOpField, plain_text, 0, 0);
 #else
 	/* a dummy pointer -- it has to be non-NULL, but it will not be read from */
-	unsigned char *const plain_text = buf.data;
+	uint8_t *const plain_text = buf.data;
 	int ptxt_len = 0;
 #endif
 
 	/* generate the nonce */
 	getrandom(EF+4, nonce_len, 0);
-	unsigned char *EF_payload = EF+4+nonce_len;
+	uint8_t *EF_payload = EF+4+nonce_len;
 
 	associated_data info[] = {
 		{ *dest, buf.data - *dest },  /* aad */
@@ -125,13 +125,13 @@ exit:
 }
 
 /* caller checks memory bounds */
-static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, unsigned char *bytes) {
+static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, uint8_t *bytes) {
 	memcpy(a, bytes, 2), memcpy(b, bytes+2, 2);
 	*a = ntohs(*a), *b = ntohs(*b);
 }
 
 int NTS_parse_extension_fields(
-		unsigned char (*src)[1280],
+		uint8_t (*src)[1280],
 		size_t src_len,
 		const struct NTS_query *nts,
 		struct NTS_receipt *fields) {
@@ -149,15 +149,15 @@ int NTS_parse_extension_fields(
 		switch(type) {
 			case UniqueIdentifier:
 				check(len - 4 == 32);
-				fields->identifier = (unsigned char (*)[32])(buf.data + 4);
+				fields->identifier = (uint8_t (*)[32])(buf.data + 4);
 				++processed;
 				break;
 			case AuthEncExtFields: {
 				uint16_t nonce_len, ciph_len;
 				decode_hdr(&nonce_len, &ciph_len, buf.data + 4);
 				check(nonce_len + ciph_len + 8 <= len);
-				unsigned char *nonce = buf.data + 8;
-				unsigned char *content = nonce + nonce_len;
+				uint8_t *nonce = buf.data + 8;
+				uint8_t *content = nonce + nonce_len;
 
 				associated_data info[] = {
 					{ *src, buf.data - *src }, /* aad */
@@ -165,7 +165,7 @@ int NTS_parse_extension_fields(
 					{ NULL },
 				};
 
-				unsigned char *plaintext = content;
+				uint8_t *plaintext = content;
 				int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, &nts->cipher, nts->s2c_key);
 				assert(plain_len < ciph_len);
 				check(plain_len >= 0);

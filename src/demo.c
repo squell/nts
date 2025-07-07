@@ -10,7 +10,7 @@
 #include "nts_extfields.h"
 #include "sntp.h"
 
-unsigned char buffer[65536];
+uint8_t buffer[65536];
 
 int main(int argc, char **argv)
 {
@@ -90,7 +90,7 @@ int main(int argc, char **argv)
 			printf("\n");
 		}
 
-		static unsigned char c2s[64], s2c[64];
+		static uint8_t c2s[64], s2c[64];
 		nts = (struct NTS_query) {
 			.cipher = *NTS_AEAD_param(NTS.aead_id),
 			.c2s_key = c2s,

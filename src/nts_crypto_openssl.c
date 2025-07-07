@@ -27,8 +27,8 @@ const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
 
 #define check(expr) if(expr); else goto exit;
 
-typedef int init_f(EVP_CIPHER_CTX*, const EVP_CIPHER*, ENGINE*, const unsigned char*, const unsigned char*);
-typedef int upd_f(EVP_CIPHER_CTX*, unsigned char*, int*, const unsigned char*, int);
+typedef int init_f(EVP_CIPHER_CTX*, const EVP_CIPHER*, ENGINE*, const uint8_t*, const uint8_t*);
+typedef int upd_f(EVP_CIPHER_CTX*, uint8_t*, int*, const uint8_t*, int);
 
 static int process_assoc_data(
 	EVP_CIPHER_CTX *state,
@@ -64,12 +64,12 @@ exit:
 	return 0;
 }
 
-int NTS_encrypt(unsigned char *ctxt,
-		const unsigned char *ptxt,
+int NTS_encrypt(uint8_t *ctxt,
+		const uint8_t *ptxt,
 		int ptxt_len,
 		const associated_data *info,
 		const struct NTS_AEAD_param *aead,
-		const unsigned char *key) {
+		const uint8_t *key) {
 
 	int result = -1;
 	int len;
@@ -80,8 +80,8 @@ int NTS_encrypt(unsigned char *ctxt,
 
 	check((cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL)));
 
-	unsigned char *ctxt_start = ctxt;
-	unsigned char *tag;
+	uint8_t *ctxt_start = ctxt;
+	uint8_t *tag;
 	if(aead->tag_first) {
 		tag = ctxt;
 		ctxt += aead->block_size;
@@ -112,12 +112,12 @@ exit:
 	return result;
 }
 
-int NTS_decrypt(unsigned char *ptxt,
-		const unsigned char *ctxt,
+int NTS_decrypt(uint8_t *ptxt,
+		const uint8_t *ctxt,
 		int ctxt_len,
 		const associated_data *info,
 		const struct NTS_AEAD_param *aead,
-		const unsigned char *key) {
+		const uint8_t *key) {
 
 	int result = -1;
 	int len;
@@ -130,7 +130,7 @@ int NTS_decrypt(unsigned char *ptxt,
 	check((cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL)));
 
 	/* set the AEAD tag */
-	const unsigned char *tag;
+	const uint8_t *tag;
 	if(aead->tag_first) {
 		tag = ctxt;
 		ctxt += aead->block_size;
@@ -140,11 +140,11 @@ int NTS_decrypt(unsigned char *ptxt,
 	ctxt_len -= aead->block_size;
 
 	check(EVP_DecryptInit_ex(state, cipher, NULL, key, NULL));
-	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (unsigned char*)tag));
+	check(EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (uint8_t*)tag));
 
 	check(process_assoc_data(state, info, aead, EVP_DecryptInit_ex, EVP_DecryptUpdate));
 
-	unsigned char *ptxt_start = ptxt;
+	uint8_t *ptxt_start = ptxt;
 
 	/* decrypt data */
 	check(EVP_DecryptUpdate(state, ptxt, &len, ctxt, ctxt_len));

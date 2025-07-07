@@ -23,12 +23,12 @@ const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
 
 #define check(expr) if(expr); else goto exit;
 
-int NTS_encrypt(unsigned char *ctxt,
-		const unsigned char *ptxt,
+int NTS_encrypt(uint8_t *ctxt,
+		const uint8_t *ptxt,
 		int ptxt_len,
 		const associated_data *info,
 		const struct NTS_AEAD_param *aead,
-		const unsigned char *key) {
+		const uint8_t *key) {
 
 	int result = -1;
 	const int BLKSIZ = 16;
@@ -44,7 +44,7 @@ int NTS_encrypt(unsigned char *ctxt,
 	}
 
 	/* encrypt data and write tag */
-	unsigned char tag[16];
+	uint8_t tag[16];
 	check(AES_SIV_EncryptFinal(state, tag, ctxt+BLKSIZ, ptxt, ptxt_len));
 	memcpy(ctxt, tag, BLKSIZ);
 
@@ -54,12 +54,12 @@ exit:
 	return result;
 }
 
-int NTS_decrypt(unsigned char *ptxt,
-		const unsigned char *ctxt,
+int NTS_decrypt(uint8_t *ptxt,
+		const uint8_t *ctxt,
 		int ctxt_len,
 		const associated_data *info,
 		const struct NTS_AEAD_param *aead,
-		const unsigned char *key) {
+		const uint8_t *key) {
 
 	int result = -1;
 	const int BLKSIZ = 16;
@@ -78,7 +78,7 @@ int NTS_decrypt(unsigned char *ptxt,
 	}
 
 	/* decrypt data */
-	unsigned char tag[16];
+	uint8_t tag[16];
 	memcpy(tag, ctxt - BLKSIZ, BLKSIZ);
 	check(AES_SIV_DecryptFinal(state, ptxt, tag, ctxt, ctxt_len));
 

@@ -34,8 +34,8 @@ enum NTS_protocol_type {
 };
 
 typedef struct {
-	unsigned char *data;
-	unsigned char *data_end;
+	uint8_t *data;
+	uint8_t *data_end;
 } slice;
 
 static size_t capacity(const slice *slice) {
@@ -43,13 +43,13 @@ static size_t capacity(const slice *slice) {
 }
 
 /* does not check bounds */
-static void push_u16(unsigned char **data, uint16_t value) {
+static void push_u16(uint8_t **data, uint16_t value) {
 	value = htons(value);
 	memcpy(*data, &value, 2);
 	*data += 2;
 }
 
-static uint16_t u16_from_bytes(unsigned char bytes[2]) {
+static uint16_t u16_from_bytes(uint8_t bytes[2]) {
 	uint16_t value;
 	memcpy(&value, bytes, 2);
 	return ntohs(value);
@@ -146,7 +146,7 @@ static int NTS_encode_record_u16(
 }
 
 int NTS_encode_request(
-		unsigned char *buffer,
+		uint8_t *buffer,
 		size_t buf_size,
 		const NTS_AEAD_algorithm_type *preferred_crypto) {
 
@@ -176,7 +176,7 @@ int NTS_encode_request(
 	return (result<0)? result : request.data - buffer;
 }
 
-int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agreement *response) {
+int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *response) {
 	slice raw_response = { buffer, buffer+buf_size };
 	struct NTS_record rec;
 
@@ -184,10 +184,9 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 	size_t cookie_nr = 0;
 	bool is_ntp4 = false;
 	char *ntp_server_terminator = NULL;
-	memset(response, 0, sizeof(struct NTS_agreement));
 
 	/* make sure the result is only OK if we really succeed */
-	response->error = NTS_INTERNAL_CLIENT_ERROR;
+	*response = (struct NTS_agreement) { .error = NTS_INTERNAL_CLIENT_ERROR };
 
 	#define check(expr, err) {               \
 		if(expr); else {                 \
@@ -250,7 +249,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 			case NTS_NTPv4Server:
 				/* do limited sanity check */
 				check(capacity(&rec.body) <= 255, NTS_BAD_RESPONSE);
-				for(const unsigned char* p = rec.body.data; p != rec.body.data_end; p++) {
+				for(const uint8_t* p = rec.body.data; p != rec.body.data_end; p++) {
 					check(isascii(*p) && isgraph(*p), NTS_BAD_RESPONSE);
 				}
 				response->ntp_server  = (char *)rec.body.data;

@@ -66,12 +66,12 @@ static int gcrypt_mode(const struct NTS_AEAD_param *aead) {
 	}
 }
 
-int NTS_encrypt(unsigned char *ctxt,
-		const unsigned char *ptxt,
+int NTS_encrypt(uint8_t *ctxt,
+		const uint8_t *ptxt,
 		int ptxt_len,
 		const associated_data *info,
 		const struct NTS_AEAD_param *aead,
-		const unsigned char *key) {
+		const uint8_t *key) {
 
 	int result = -1;
 
@@ -81,7 +81,7 @@ int NTS_encrypt(unsigned char *ctxt,
 	check(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
 	check(process_assoc_data(handle, info, aead));
 
-	unsigned char *tag;
+	uint8_t *tag;
 	if(aead->tag_first) {
 		tag = ctxt;
 		ctxt += aead->block_size;
@@ -99,12 +99,12 @@ exit:
 	return result;
 }
 
-int NTS_decrypt(unsigned char *ptxt,
-		const unsigned char *ctxt,
+int NTS_decrypt(uint8_t *ptxt,
+		const uint8_t *ctxt,
 		int ctxt_len,
 		const associated_data *info,
 		const struct NTS_AEAD_param *aead,
-		const unsigned char *key) {
+		const uint8_t *key) {
 
 	int result = -1;
 
@@ -115,7 +115,7 @@ int NTS_decrypt(unsigned char *ptxt,
 	check(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
 	check(process_assoc_data(handle, info, aead));
 
-	const unsigned char *tag;
+	const uint8_t *tag;
 	if(aead->tag_first) {
 		tag = ctxt;
 		ctxt += aead->block_size;

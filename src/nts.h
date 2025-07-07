@@ -44,7 +44,7 @@ struct NTS_agreement {
 	uint16_t ntp_port;
 
 	struct NTS_cookie {
-		unsigned char* data;
+		uint8_t *data;
 		size_t length;
 	} cookie[8];
 };
@@ -57,7 +57,7 @@ struct NTS_agreement {
  *      non-zero number of bytes encoded upon success
  *      negative value upon failure (not enough room in buffer)
  */
-int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_algorithm_type[]);
+int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEAD_algorithm_type[]);
 
 /* Decode a NTS KE reponse in the buffer of the provided size, and write the result to the NTS_reponse
  * struct.
@@ -66,7 +66,7 @@ int NTS_encode_request(unsigned char *buffer, size_t buf_size, const NTS_AEAD_al
  *      0 upon success
  *      -1 upon failure (writes the error code to NTS_agreement->error)
  */
-int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agreement *);
+int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *);
 
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes
@@ -86,12 +86,7 @@ const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type);
  *              -2 not enough space in buffer
  *              -3 unkown AEAD
  */
-int NTS_SSL_extract_keys(
-		SSL *,
-		NTS_AEAD_algorithm_type,
-		unsigned char *c2s,
-		unsigned char *s2c,
-		int key_capacity);
+int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, uint8_t *c2s, uint8_t *s2c, int key_capacity);
 
 /* Setup a SSL object that is connected to hostname:port, ready to begin a TLS handshake.
  * Accepted certificates are loaded using the provided function pointer

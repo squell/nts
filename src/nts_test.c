@@ -168,7 +168,7 @@ void test_ntp_field_encoding(void) {
 	for(int i=0; i < len; i++) {
 		memset(&rcpt, 0, sizeof(rcpt));
 		len = NTS_add_extension_fields(&buffer, &nts, NULL);
-		buffer[i]++;
+		buffer[i] ^= 0x20;
 		assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 	}
 

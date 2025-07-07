@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <threads.h>
 #include <openssl/ssl.h>
 
 typedef uint16_t NTS_AEAD_algorithm_type;

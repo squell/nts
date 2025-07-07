@@ -56,6 +56,13 @@ enum extfields {
 
 #define check(expr) if(expr); else goto exit;
 
+static void getrandom(uint8_t *buf, size_t len, int flags) {
+    (void)flags;
+    for(size_t i=0; i < len; i++ ) {
+	buf[i] = arc4random() & 0xFF;
+    }
+}
+
 int NTS_add_extension_fields(
 		uint8_t (*dest)[1280],
 		const struct NTS_query *nts,

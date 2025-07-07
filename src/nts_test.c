@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
@@ -194,7 +193,8 @@ void add_encrypted_server_hdr(
 	uint8_t *af = *p_ptr;
 	uint8_t *pt;
 	/* write nonce */
-	*p_ptr = pt = (uint8_t*)mempcpy(af+8, "123NONCE", 8) + 16;
+	memcpy(af+8, "123NONCE", 8);
+	*p_ptr = pt = af+32;
 	/* write fields */
 	encode_record_raw_ext(p_ptr, 0x0104, "A sharp mind cuts through deceit", 32);
 	encode_record_raw_ext(p_ptr, 0x0204, cookie, strlen(cookie));

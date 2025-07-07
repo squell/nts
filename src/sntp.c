@@ -35,18 +35,6 @@ static uint64_t get_current_ntp_time(void) {
 	return secs << 32 | frac;
 }
 
-static uint64_t htonll(uint64_t x) {
-	uint32_t parts[2] = { htonl(x >> 32), htonl(x) };
-	memcpy(&x, parts, 8);
-	return x;
-}
-
-static uint64_t ntohll(uint64_t x) {
-	uint32_t parts[2];
-	memcpy(parts, &x, 8);
-	return (uint64_t)ntohl(parts[0]) << 32 | ntohl(parts[1]);
-}
-
 int NTS_attach_socket(const char *host, int port, int type);
 
 void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtrip_delay, double *time_offset) {

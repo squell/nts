@@ -1,4 +1,3 @@
-#include <threads.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>

@@ -7,8 +7,11 @@
 #include "nts.h"
 #include "nts_extfields.h"
 
-/* this program does no sanity checking as it is meant for fuzzing only */
+void eat(volatile const unsigned char* buf, size_t size) {
+	if(buf) while(size) (void)buf[size--];
+}
 
+/* this program does no sanity checking as it is meant for fuzzing only */
 int main(int argc, char **argv) {
 	int file = open(argv[1], O_RDONLY);
 	unsigned char buffer[1280];
@@ -24,10 +27,16 @@ int main(int argc, char **argv) {
 	if(argc > 2) {
 		/* fuzz the nts ke */
 		struct NTS_agreement rec;
-		(void) NTS_decode_response(buffer, len, &rec);
+		if(NTS_decode_response(buffer, len, &rec) == 0) {
+			for(int i = 0; i < 8; i++)
+				eat(rec.cookie[i].data, rec.cookie[i].length);
+		}
 	} else {
 		struct NTS_receipt rcpt = { 0, };
-		(void) NTS_parse_extension_fields(&buffer, len, &nts, &rcpt);
+		if(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt)) {
+			eat(rcpt.new_cookie.data, rcpt.new_cookie.length);
+			eat(*rcpt.identifier, 32);
+		}
 	}
 
 	return 0;

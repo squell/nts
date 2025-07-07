@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <endian.h>
 
 int NTS_attach_socket(const char *host, int port, int type) {
 	struct addrinfo hints;
@@ -20,10 +21,10 @@ int NTS_attach_socket(const char *host, int port, int type) {
 	for(struct addrinfo *cur = info; cur; cur = cur->ai_next) {
 		switch(cur->ai_family) {
 			case AF_INET6:
-				((struct sockaddr_in6*)cur->ai_addr)->sin6_port = htons(port);
+				((struct sockaddr_in6*)cur->ai_addr)->sin6_port = htobe16(port);
 				break;
 			case AF_INET:
-				((struct sockaddr_in*)cur->ai_addr)->sin_port = htons(port);
+				((struct sockaddr_in*)cur->ai_addr)->sin_port = htobe16(port);
 				break;
 			default:
 				/* try a different sockaddr */

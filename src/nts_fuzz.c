@@ -62,3 +62,8 @@ int NTS_decrypt(unsigned char *ptxt, const unsigned char *ctxt, int ctxt_len, co
 	memmove(ptxt, ctxt+16, ctxt_len - BLKSIZ);
 	return ctxt_len - BLKSIZ;
 }
+
+const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
+	static struct NTS_AEAD_param param = { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" };
+	return id? &param : NULL;
+}

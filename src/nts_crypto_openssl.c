@@ -3,6 +3,28 @@
 #include <assert.h>
 #include <openssl/ssl.h>
 
+static const struct NTS_AEAD_param supported_algos[] = {
+	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
+	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" },
+#if OPENSSL_VERSION_PREREQ(3,2)
+	{ NTS_AEAD_AES_128_GCM_SIV,  128/8, 16, 12, false, true, "AES-128-GCM-SIV" },
+	{ NTS_AEAD_AES_256_GCM_SIV,  256/8, 16, 12, false, true, "AES-256-GCM-SIV" },
+#endif
+};
+
+#define ELEMS(array) (sizeof(array) / sizeof(*array))
+
+const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
+	for(size_t i=0; i < ELEMS(supported_algos); i++) {
+		if(supported_algos[i].aead_id == id) {
+			return &supported_algos[i];
+		}
+	}
+
+	return NULL;
+}
+
 #define check(expr) if(expr); else goto exit;
 
 static int process_assoc_data(

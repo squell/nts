@@ -3,6 +3,24 @@
 #include <assert.h>
 #include <aes_siv.h>
 
+static const struct NTS_AEAD_param
+	siv256 = { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
+	siv512 = { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
+	siv384 = { NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" };
+
+const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
+	switch(id) {
+		case NTS_AEAD_AES_SIV_CMAC_256:
+			return &siv256;
+		case NTS_AEAD_AES_SIV_CMAC_512:
+			return &siv512;
+		case NTS_AEAD_AES_SIV_CMAC_384:
+			return &siv384;
+		default:
+			return NULL;
+	}
+}
+
 #define check(expr) if(expr); else goto exit;
 
 /* caller should make sure that there is enough room in ptxt for holding the plaintext + one additional block */

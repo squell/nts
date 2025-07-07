@@ -18,10 +18,10 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: build
-        run: CC="cc -Werror" make -C src SIV=OPENSSL demo qdntp
+        run: CC="cc -Werror" make -C src CRYPTO=openssl demo qdntp
 
       - name: run unit tests
-        run: CC="cc -fsanitize=address,undefined -Werror" make -C src SIV=OPENSSL test
+        run: CC="cc -fsanitize=address,undefined -Werror" make -C src CRYPTO=openssl test
 
   build-and-test-libaes_siv:
     runs-on: ubuntu-latest
@@ -37,10 +37,10 @@ jobs:
         run: make -C libaes_siv
 
       - name: build
-        run: CC="cc -fsanitize=address,undefined -Werror" make -C src SIV=LIBAES_SIV demo qdntp
+        run: CC="cc -fsanitize=address,undefined -Werror" make -C src CRYPTO=libaes_siv demo qdntp
 
       - name: run unit tests
-        run: CC="cc -fsanitize=address,undefined -Werror" make -C src SIV=LIBAES_SIV test
+        run: CC="cc -fsanitize=address,undefined -Werror" make -C src CRYPTO=libaes_siv test
 
   build-and-test-gcrypt:
     runs-on: ubuntu-latest
@@ -51,10 +51,10 @@ jobs:
         run: sudo apt-get install libgcrypt20-dev
 
       - name: build
-        run: CC="cc -Werror" make -C src SIV=GCRYPT demo qdntp
+        run: CC="cc -Werror" make -C src CRYPTO=gcrypt demo qdntp
 
       - name: run unit tests
-        run: CC="cc -fsanitize=address,undefined -Werror" make -C src SIV=GCRYPT test
+        run: CC="cc -fsanitize=address,undefined -Werror" make -C src CRYPTO=gcrypt test
 
   static-analysis-openssl:
     runs-on: ubuntu-latest
@@ -67,7 +67,7 @@ jobs:
           sudo apt-get install --yes clang-tools
 
       - name: run analysis
-        run: scan-build --status-bugs make -C src SIV=OPENSSL
+        run: scan-build --status-bugs make -C src CRYPTO=openssl
 
   static-analysis-libaes_siv:
     runs-on: ubuntu-latest
@@ -88,7 +88,7 @@ jobs:
         run: make -C libaes_siv
 
       - name: run analysis
-        run: scan-build --status-bugs make -C src SIV=LIBAES_SIV
+        run: scan-build --status-bugs make -C src CRYPTO=libaes_siv
 
   static-analysis-gcrypt:
     runs-on: ubuntu-latest
@@ -104,7 +104,7 @@ jobs:
         run: sudo apt-get install libgcrypt20-dev
 
       - name: run analysis
-        run: scan-build --status-bugs make -C src SIV=GCRYPT
+        run: scan-build --status-bugs make -C src CRYPTO=gcrypt
 
   smoke-test-ntp:
     runs-on: ubuntu-latest

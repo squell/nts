@@ -258,23 +258,3 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
 	return -1;
 }
 #undef check
-
-static const struct NTS_AEAD_param supported_algos[] = {
-	{ NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
-	{ NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
-	{ NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" },
-#ifndef USE_LIBAES_SIV
-	{ NTS_AEAD_AES_128_GCM_SIV,  128/8, 16, 12, false, true, "AES-128-GCM-SIV" },
-	{ NTS_AEAD_AES_256_GCM_SIV,  256/8, 16, 12, false, true, "AES-256-GCM-SIV" },
-#endif
-};
-
-const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
-	for(size_t i=0; i < ELEMS(supported_algos); i++) {
-		if(supported_algos[i].aead_id == id) {
-			return &supported_algos[i];
-		}
-	}
-
-	return NULL;
-}

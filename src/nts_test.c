@@ -290,11 +290,6 @@ void test_crypto(void) {
 	/* test roundtrips for all ciphers */
 	for(unsigned id=0; id <= 33; id++) {
 		if(!NTS_AEAD_param(id)) continue;
-#ifndef USE_GCRYPT
-		EVP_CIPHER *cipher = EVP_CIPHER_fetch(NULL, NTS_AEAD_param(id)->cipher_name, NULL);
-		if(!cipher) continue;
-		EVP_CIPHER_free(cipher);
-#endif
 		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, NTS_AEAD_param(id), key);
 		assert(len > 0);
 		assert(NTS_decrypt(dec, enc, len, ad, NTS_AEAD_param(id), key) == sizeof(plaintext));
@@ -354,15 +349,8 @@ void test_crypto(void) {
 		assert(memcmp(out, ct, sizeof(ct)) == 0);
 	}
 
-#ifndef USE_LIBAES_SIV
 	/* test known vectors - AES_128_GCM_SIV */
-	{
-#ifndef USE_GCRYPT
-		EVP_CIPHER *cipher = EVP_CIPHER_fetch(NULL, "AES_128_GCM_SIV", NULL);
-		if(!cipher) return;
-		EVP_CIPHER_free(cipher);
-#endif
-
+	if(NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV)) {
 		unsigned char key[16] = { 1 };
 		unsigned char nonce[12] = { 3 };
 		unsigned char aad[1] = { 1 };
@@ -384,7 +372,6 @@ void test_crypto(void) {
 		assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
 		assert(memcmp(out, ct, sizeof(ct)) == 0);
 	}
-#endif
 }
 
 int main(void) {

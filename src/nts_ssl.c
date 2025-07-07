@@ -41,7 +41,7 @@ int NTS_SSL_extract_keys(
 
 int NTS_attach_socket(const char *host, int port, int type);
 
-static BIO *connect_bio(const char *hostname, int port, int blocking) {
+static BIO* connect_bio(const char *hostname, int port, int blocking) {
 	BIO *bio = BIO_new(BIO_s_socket());
 	if(!bio) return NULL;
 
@@ -62,7 +62,7 @@ thread_local enum NTS_SSL_error_type NTS_SSL_error;
 
 #define expect(expr) if(expr)
 
-SSL *NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking) {
+SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking) {
 	SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
 	expect(ctx); else {
 		NTS_SSL_error = NTS_SSL_INTERNAL_ERROR;

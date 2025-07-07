@@ -74,7 +74,7 @@ int NTS_decode_response(unsigned char *buffer, size_t buf_size, struct NTS_agree
  * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
  */
 
-const struct NTS_AEAD_param *NTS_AEAD_param(NTS_AEAD_algorithm_type);
+const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type);
 
 /* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to
  * buffers that provide key_capacity amount of bytes
@@ -102,7 +102,7 @@ int NTS_SSL_extract_keys(
  * RETURNS
  *      A pointer to a ready SSL object, NULL upon failure (and then the error is stored in NTS_SSL_error)
  */
-SSL *NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
+SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 
 extern thread_local enum NTS_SSL_error_type {
 	NTS_SSL_INTERNAL_ERROR,

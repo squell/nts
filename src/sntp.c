@@ -89,7 +89,7 @@ void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtr
 	T[4] = get_current_ntp_time();
 
 	long double d = (T[4] - T[1]) - (T[3] - T[2]);
-	long double t = (T[2] - T[1]) + (T[3] - T[4]);
-	*roundtrip_delay = d / (2ULL<<32);
+	long double t = ((T[2] - T[1]) + (T[3] - T[4])) / 2;
+	*roundtrip_delay = d / (1ULL<<32);
 	*time_offset = t / (1ULL<<32);
 }

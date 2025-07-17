@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <endian.h>
 
 #include "nts_extfields.h"
 #include "nts_crypto.h"
@@ -38,9 +37,9 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 	}
 
 	memmove(buf->data+4, contents, len);
-	type = htobe16(type);
+	type = htons(type);
 	memcpy(buf->data, &type, 2);
-	len = htobe16(padded_len);
+	len = htons(padded_len);
 	memcpy(buf->data+2, &len, 2);
 
 	buf->data += padded_len;
@@ -56,6 +55,13 @@ enum extfields {
 };
 
 #define check(expr) if(expr); else goto exit;
+
+static void getrandom(uint8_t *buf, size_t len, int flags) {
+    (void)flags;
+    for(size_t i=0; i < len; i++ ) {
+	buf[i] = arc4random() & 0xFF;
+    }
+}
 
 int NTS_add_extension_fields(
 		uint8_t (*dest)[1280],
@@ -115,7 +121,7 @@ int NTS_add_extension_fields(
 	int ef_len = 4 + ctxt_len + nonce_len + (nonce_len < req_nonce_len)*(req_nonce_len - nonce_len);
 
 	/* set the ciphertext length */
-	ctxt_len = htobe16(ctxt_len);
+	ctxt_len = htons(ctxt_len);
 	memcpy(EF+2, &ctxt_len, 2);
 
 	check(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
@@ -128,7 +134,7 @@ exit:
 /* caller checks memory bounds */
 static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, uint8_t *bytes) {
 	memcpy(a, bytes, 2), memcpy(b, bytes+2, 2);
-	*a = be16toh(*a), *b = be16toh(*b);
+	*a = ntohs(*a), *b = ntohs(*b);
 }
 
 int NTS_parse_extension_fields(

@@ -1,9 +1,12 @@
 #include "nts_crypto.h"
 
 #include <assert.h>
+#include <nettle/version.h>
 #include <nettle/siv-cmac.h>
 #if NETTLE_VERSION_MAJOR > 3 || NETTLE_VERSION_MAJOR == 3 && NETTLE_VERSION_MINOR >= 9
 #  include <nettle/siv-gcm.h>
+#elif NETTLE_VERSION_MAJOR == 3 && NETTLE_VERSION_MINOR < 8
+#  error Your Nettle version is too old.
 #endif
 
 static const struct NTS_AEAD_param supported_algos[] = {
@@ -32,6 +35,8 @@ const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
 union ctx {
 	struct siv_cmac_aes128_ctx siv_cmac128;
 	struct siv_cmac_aes256_ctx siv_cmac256;
+	struct aes128_ctx aes128;
+	struct aes256_ctx aes256;
 };
 
 int NTS_encrypt(uint8_t *ctxt,
@@ -70,6 +75,30 @@ int NTS_encrypt(uint8_t *ctxt,
 			struct siv_cmac_aes256_ctx *state = &ctx_obj.siv_cmac256;
 			siv_cmac_aes256_set_key(state, key);
 			siv_cmac_aes256_encrypt_message(
+				state,
+				info[1].length, info[1].data,
+				info[0].length, info[0].data,
+				ctxt_len, ctxt,
+				ptxt
+			);
+			break;
+		}
+		case NTS_AEAD_AES_128_GCM_SIV: {
+			struct aes128_ctx *state = &ctx_obj.aes128;
+			aes128_set_encrypt_key(state, key);
+			siv_gcm_aes128_encrypt_message(
+				state,
+				info[1].length, info[1].data,
+				info[0].length, info[0].data,
+				ctxt_len, ctxt,
+				ptxt
+			);
+			break;
+		}
+		case NTS_AEAD_AES_256_GCM_SIV: {
+			struct aes256_ctx *state = &ctx_obj.aes256;
+			aes256_set_encrypt_key(state, key);
+			siv_gcm_aes256_encrypt_message(
 				state,
 				info[1].length, info[1].data,
 				info[0].length, info[0].data,
@@ -126,6 +155,30 @@ int NTS_decrypt(uint8_t *ptxt,
 			struct siv_cmac_aes256_ctx *state = &ctx_obj.siv_cmac256;
 			siv_cmac_aes256_set_key(state, key);
 			check(siv_cmac_aes256_decrypt_message(
+				state,
+				info[1].length, info[1].data,
+				info[0].length, info[0].data,
+				ptxt_len, ptxt,
+				ctxt
+			));
+			break;
+		}
+		case NTS_AEAD_AES_128_GCM_SIV: {
+			struct aes128_ctx *state = &ctx_obj.aes128;
+			aes128_set_encrypt_key(state, key);
+			check(siv_gcm_aes128_decrypt_message(
+				state,
+				info[1].length, info[1].data,
+				info[0].length, info[0].data,
+				ptxt_len, ptxt,
+				ctxt
+			));
+			break;
+		}
+		case NTS_AEAD_AES_256_GCM_SIV: {
+			struct aes256_ctx *state = &ctx_obj.aes256;
+			aes256_set_encrypt_key(state, key);
+			check(siv_gcm_aes256_decrypt_message(
 				state,
 				info[1].length, info[1].data,
 				info[0].length, info[0].data,

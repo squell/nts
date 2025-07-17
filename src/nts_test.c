@@ -297,7 +297,8 @@ void test_crypto(void) {
 	for(unsigned i = 0; i < sizeof(key); i++) key[i] = i * 0x11 & 0xFF;
 
 	const associated_data ad[] = {
-		{ (uint8_t*)"XFNORDXXXXXX", 12 },
+		{ (uint8_t*)"FNORD", 5 },
+		{ (uint8_t*)"XXXXNONCEXXX", 12 },
 		{ NULL },
 	};
 
@@ -318,7 +319,7 @@ void test_crypto(void) {
 	assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
 	/* test known vectors AES_SIV_CMAC_256 */
-	{
+	if(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_384)) {
 
 		uint8_t key[] = {
 			0x7f,0x7e,0x7d,0x7c, 0x7b,0x7a,0x79,0x78, 0x77,0x76,0x75,0x74, 0x73,0x72,0x71,0x70,

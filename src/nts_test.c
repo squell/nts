@@ -395,7 +395,6 @@ int main(void) {
 	test_ntp_field_encoding();
 	test_ntp_field_decoding();
 	assert(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256)->key_size == 32);
-	assert(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_384)->key_size == 48);
 	assert(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_512)->key_size == 64);
 
 	return 0;

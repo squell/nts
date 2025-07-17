@@ -317,8 +317,8 @@ void test_crypto(void) {
 	assert(NTS_decrypt(enc, enc, len, ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(plaintext));
 	assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
-       /* test known vectors AES_SIV_CMAC_256 */
-       {
+	/* test known vectors AES_SIV_CMAC_256 */
+	{
 
 		uint8_t key[] = {
 			0x7f,0x7e,0x7d,0x7c, 0x7b,0x7a,0x79,0x78, 0x77,0x76,0x75,0x74, 0x73,0x72,0x71,0x70,

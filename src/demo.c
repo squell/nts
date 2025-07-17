@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 
 	SSL_free(ssl);
 	return 0;
- end:
+end:
 	ERR_print_errors_fp(stderr);
 
 	SSL_free(ssl);

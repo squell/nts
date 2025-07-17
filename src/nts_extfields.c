@@ -11,9 +11,8 @@
 #include "nts_extfields.h"
 #include "nts_crypto.h"
 
-#if OPENSSL_VERSION_PREREQ(3,5)
-#else
-#  define OPENSSL_WORKAROUND
+#if defined(OPENSSL_WORKAROUND) && OPENSSL_VERSION_PREREQ(3,5)
+#  warning The OpenSSL workaround is not necessary.
 #endif
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"

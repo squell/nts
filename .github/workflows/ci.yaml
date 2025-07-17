@@ -34,14 +34,16 @@ jobs:
       - name: build with clang
         run: CC="clang -fsanitize=address,integer,undefined -Werror" make -B -C src CRYPTO=openssl all
 
-      - name: test with openssl
-        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=openssl test
-
       - name: test with gcrypt
         run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=gcrypt test
 
       - name: test with libaes_siv
         run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=libaes_siv test
+
+      - name: test with openssl
+        run: |
+          CC="clang -fsanitize=address,integer,undefined -Werror -DOPENSSL_WORKAROUND" make -C src -B nts_extfields.o
+          CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=openssl test
 
       - name: install clang-tools
         run: |

@@ -34,7 +34,8 @@ int main(int argc, char **argv)
 	} else if(argc > 2) {
 		prefs = pref_arr;
 		for(char **arg = argv+2; *arg; arg++) {
-			#define parse(type) if(strstr(#type, *arg)) *prefs++ = NTS_##type
+			#define parse(type) if(strstr(#type, *arg)) \
+                                (void) (NTS_AEAD_param(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type))
 			if(strnlen(*arg, 3) < 3) continue; else
 			parse(AEAD_AES_SIV_CMAC_256); else
 			parse(AEAD_AES_SIV_CMAC_384); else

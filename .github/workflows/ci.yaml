@@ -19,14 +19,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: configure libaes_siv
-        run: cd libaes_siv && cmake .
-
       - name: build libaes_siv
-        run: make -C libaes_siv
+        run: cd libaes_siv && cmake . && make
 
-      - name: install gcrypt
-        run: sudo apt-get install libgcrypt20-dev
+      - name: install dependencies, gcrypt and nettle
+        run: sudo apt-get install --yes libgcrypt20-dev nettle-dev
 
       - name: build with gcc
         run: CC="gcc -Werror" make -B -C src CRYPTO=openssl all
@@ -39,6 +36,9 @@ jobs:
 
       - name: test with libaes_siv
         run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=libaes_siv test
+
+      - name: test with nettle
+        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=nettle test
 
       - name: test with openssl
         run: |

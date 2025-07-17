@@ -9,8 +9,10 @@ else ifeq ($(CRYPTO), gcrypt)
   LINK += -lgcrypt
 else ifeq ($(CRYPTO), openssl)
   # we already link to OpenSSL
+else ifeq ($(CRYPTO), nettle)
+  LINK += -lnettle
 else
-  $(error "CRYPTO must be either 'openssl', 'gcrypt', or 'libaes_siv'")
+  $(error "CRYPTO must be either 'openssl', 'gcrypt', 'libaes_siv' or 'nettle'")
 endif
 
 demo: demo.o nts_packet.o nts_ssl.o sntp.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
@@ -38,7 +40,8 @@ fuzz_ntp: nts_fuzz
 	afl-fuzz -V $(FUZZTIME) -i ../fuzz/nts_extfield -o out_ntp -g 48 -G 1280 -D ./nts_fuzz @@
 	@! test -e ./out_ntp/default/crashes/README.txt
 
-all: qdntp nts_fuzz nts_test nts_crypto_openssl.o nts_crypto_libaes_siv.o nts_crypto_gcrypt.o demo
+all: demo qdntp nts_fuzz nts_test \
+	nts_crypto_openssl.o nts_crypto_libaes_siv.o nts_crypto_gcrypt.o nts_crypto_nettle.o
 
 clean:
 	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda
@@ -48,6 +51,7 @@ nts_crypto_openssl.o: nts_crypto_openssl.c nts_crypto.h nts.h nts_extfields.h
 nts_crypto_gcrypt.o: nts_crypto_gcrypt.c nts_crypto.h nts.h nts_extfields.h
 nts_crypto_libaes_siv.o: nts_crypto_libaes_siv.c nts_crypto.h nts.h nts_extfields.h
 	$(CC) $(CFLAGS) -I../libaes_siv -o $@ -c $<
+nts_crypto_nettle.o: nts_crypto_nettle.c nts_crypto.h nts.h nts_extfields.h
 
 nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
 nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h

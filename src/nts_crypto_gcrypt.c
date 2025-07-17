@@ -33,8 +33,7 @@ static int process_assoc_data(
 	/* process the associated data and nonce first */
 	const associated_data *last = NULL;
 	if(aead->nonce_is_iv) {
-		/* workaround for the GCM-SIV interface, where the IV is set directly in
-		 * contradiction to the documentation; */
+		/* workaround for the GCM-SIV interface, where the IV is set directly */
 		assert(info->data);
 		for(last = info; (last+1)->data != NULL; ) {
 			last++;

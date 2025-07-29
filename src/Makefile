@@ -22,7 +22,7 @@ qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
 
 nts_test: nts_packet.o nts_extfields.o nts_test.o nts_crypto_$(CRYPTO).o
-	$(CC) $+ $(LINK) -lssl -lcrypto -o $@
+	$(CC) $+ $(LINK) -lcrypto -o $@
 
 nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
 	$(CC) $+ $(CFLAGS) -o $@

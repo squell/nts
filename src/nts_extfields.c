@@ -201,7 +201,7 @@ int NTS_parse_extension_fields(
 			default:
 				/* ignore unknown fields */
 				;
-		};
+		}
 
 		buf.data += len;
 	}

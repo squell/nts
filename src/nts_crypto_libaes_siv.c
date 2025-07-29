@@ -39,9 +39,8 @@ int NTS_encrypt(uint8_t *ctxt,
         check(AES_SIV_Init(state, key, aead->key_size));
 
         /* process the associated data first */
-        for ( ; info->data; info++) {
+        for ( ; info->data; info++)
                 check(AES_SIV_AssociateData(state, info->data, info->length));
-        }
 
         /* encrypt data and write tag */
         uint8_t tag[16];
@@ -73,9 +72,8 @@ int NTS_decrypt(uint8_t *ptxt,
         ctxt_len -= BLKSIZ;
 
         /* process the associated data first */
-        for ( ; info->data; info++) {
+        for ( ; info->data; info++)
                 check(AES_SIV_AssociateData(state, info->data, info->length));
-        }
 
         /* decrypt data */
         uint8_t tag[16];

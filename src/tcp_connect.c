@@ -14,9 +14,8 @@ int NTS_attach_socket(const char *host, int port, int type) {
         hints.ai_socktype = type;
 
         struct addrinfo *info;
-        if (getaddrinfo(host, NULL, &hints, &info) != 0) {
+        if (getaddrinfo(host, NULL, &hints, &info) != 0)
                 return -1;
-        }
 
         for (struct addrinfo *cur = info; cur; cur = cur->ai_next) {
                 switch (cur->ai_family) {

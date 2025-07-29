@@ -16,11 +16,9 @@ static const struct NTS_AEAD_param supported_algos[] = {
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
 const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
-        for (size_t i=0; i < ELEMS(supported_algos); i++) {
-                if (supported_algos[i].aead_id == id) {
+        for (size_t i=0; i < ELEMS(supported_algos); i++)
+                if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];
-                }
-        }
 
         return NULL;
 }
@@ -46,9 +44,9 @@ static int process_assoc_data(
                  * our interface *does* interpret the last AAD item as the siv/nonce
                  */
                 assert(info->data);
-                for (last = info; (last+1)->data != NULL; ) {
+                for (last = info; (last+1)->data != NULL; )
                         last++;
-                }
+
                 check(last->length == aead->nonce_size);
                 check(EVP_CryptInit_ex(state, NULL, NULL, NULL, last->data));
         }
@@ -85,9 +83,8 @@ int NTS_encrypt(uint8_t *ctxt,
         if (aead->tag_first) {
                 tag = ctxt;
                 ctxt += aead->block_size;
-        } else {
+        } else
                 tag = ctxt + ptxt_len;
-        }
 
         check(EVP_EncryptInit_ex(state, cipher, NULL, key, NULL));
         check(process_assoc_data(state, info, aead, EVP_EncryptInit_ex, EVP_EncryptUpdate));
@@ -134,9 +131,9 @@ int NTS_decrypt(uint8_t *ptxt,
         if (aead->tag_first) {
                 tag = ctxt;
                 ctxt += aead->block_size;
-        } else {
+        } else
                 tag = ctxt + ctxt_len - aead->block_size;
-        }
+
         ctxt_len -= aead->block_size;
 
         check(EVP_DecryptInit_ex(state, cipher, NULL, key, NULL));

@@ -21,11 +21,9 @@ static const struct NTS_AEAD_param supported_algos[] = {
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
 const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
-        for (size_t i=0; i < ELEMS(supported_algos); i++) {
-                if (supported_algos[i].aead_id == id) {
+        for (size_t i=0; i < ELEMS(supported_algos); i++)
+                if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];
-                }
-        }
 
         return NULL;
 }
@@ -134,10 +132,9 @@ int NTS_decrypt(uint8_t *ptxt,
 
         const int ptxt_len = ctxt_len - aead->block_size;
         uint8_t *real_ptxt = ptxt;
-        if (ctxt == ptxt && aead->tag_first) {
+        if (ctxt == ptxt && aead->tag_first)
                 /* nettle can't handle in-place decryption well in SIV-CMAC mode */
                 ptxt += aead->block_size;
-        }
 
         switch (aead->aead_id) {
                 union ctx ctx_obj;

@@ -33,9 +33,8 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
         uint16_t padded_len = (size+3) & ~3;
         int padding = padded_len - (len+4);
 
-        if (capacity(buf) < padded_len) {
+        if (capacity(buf) < padded_len)
                 return 0;
-        }
 
         memmove(buf->data+4, contents, len);
         type = htobe16(type);

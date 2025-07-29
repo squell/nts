@@ -54,7 +54,7 @@ nts_crypto_libaes_siv.o: nts_crypto_libaes_siv.c nts_crypto.h nts.h nts_extfield
 nts_crypto_nettle.o: nts_crypto_nettle.c nts_crypto.h nts.h nts_extfields.h
 
 nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
-nts_fuzz.o: nts_fuzz.c nts.h nts_extfields.h
+nts_fuzz.o: nts_fuzz.c nts.h nts_crypto.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
 nts_ssl.o: nts_ssl.c nts.h
 nts_test.o: nts_test.c nts.h nts_extfields.h nts_crypto.h

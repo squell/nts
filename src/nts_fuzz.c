@@ -15,6 +15,8 @@ void eat(volatile const uint8_t* buf, size_t size) {
 /* this program does no sanity checking as it is meant for fuzzing only */
 int main(int argc, char **argv) {
 	int file = open(argv[1], O_RDONLY);
+        assert(file >= 0);
+
 	uint8_t buffer[1280];
 	int len = read(file, buffer, 1280);
 	if(len < 48) return 0;

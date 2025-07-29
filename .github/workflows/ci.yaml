@@ -25,8 +25,9 @@ jobs:
       - name: install dependencies, gcrypt and nettle
         run: sudo apt-get install --yes libgcrypt20-dev nettle-dev
 
-      - name: build with gcc
-        run: CC="gcc -Werror" make -B -C src CRYPTO=openssl all
+      - name: build with gcc -fanalyzer
+        # Using -flto for cross-module analysis (experimental according to the internal docs of -fanalyzer)
+        run: CC="gcc -fanalyzer -flto -Werror" make -B -C src CRYPTO=openssl all
 
       - name: build with clang
         run: CC="clang -fsanitize=address,integer,undefined -Werror" make -B -C src CRYPTO=openssl all

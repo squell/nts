@@ -106,3 +106,10 @@ typedef enum NTS_TLSErrorType {
 } NTS_TLSErrorType;
 
 extern thread_local enum NTS_TLSErrorType NTS_SSL_error;
+
+#ifndef memzero
+#define memzero(x,l) (assert(l >= 0), memset(x, 0, l))
+#endif
+#ifndef zero
+#define zero(x) (memzero(&(x), sizeof(x)))
+#endif

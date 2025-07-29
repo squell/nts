@@ -7,46 +7,46 @@
 
 typedef uint16_t NTS_AEAD_algorithm_type;
 enum {
-	NTS_AEAD_AES_SIV_CMAC_256 = 15,
-	NTS_AEAD_AES_SIV_CMAC_384 = 16,
-	NTS_AEAD_AES_SIV_CMAC_512 = 17,
-	NTS_AEAD_AES_128_GCM_SIV  = 30,
-	NTS_AEAD_AES_256_GCM_SIV  = 31,
+        NTS_AEAD_AES_SIV_CMAC_256 = 15,
+        NTS_AEAD_AES_SIV_CMAC_384 = 16,
+        NTS_AEAD_AES_SIV_CMAC_512 = 17,
+        NTS_AEAD_AES_128_GCM_SIV  = 30,
+        NTS_AEAD_AES_256_GCM_SIV  = 31,
 };
 
 struct NTS_AEAD_param {
-	uint8_t aead_id, key_size, block_size, nonce_size;
-	bool tag_first, nonce_is_iv;
-	const char *cipher_name;
+        uint8_t aead_id, key_size, block_size, nonce_size;
+        bool tag_first, nonce_is_iv;
+        const char *cipher_name;
 };
 
 enum NTS_error_type {
-	NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
-	NTS_ERROR_BAD_REQUEST = 1,
-	NTS_ERROR_INTERNAL_SERVER_ERROR = 2,
+        NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
+        NTS_ERROR_BAD_REQUEST = 1,
+        NTS_ERROR_INTERNAL_SERVER_ERROR = 2,
 
-	NTS_UNEXPECTED_WARNING = 0x10000,
-	NTS_BAD_RESPONSE = 0x10001,
-	NTS_INTERNAL_CLIENT_ERROR = 0x10002,
-	NTS_NO_PROTOCOL = 0x10003,
-	NTS_NO_AEAD = 0x10004,
-	NTS_INSUFFICIENT_DATA = 0x10005,
+        NTS_UNEXPECTED_WARNING = 0x10000,
+        NTS_BAD_RESPONSE = 0x10001,
+        NTS_INTERNAL_CLIENT_ERROR = 0x10002,
+        NTS_NO_PROTOCOL = 0x10003,
+        NTS_NO_AEAD = 0x10004,
+        NTS_INSUFFICIENT_DATA = 0x10005,
 
-	NTS_SUCCESS = -1,
+        NTS_SUCCESS = -1,
 };
 
 struct NTS_agreement {
-	enum NTS_error_type error;
+        enum NTS_error_type error;
 
-	NTS_AEAD_algorithm_type aead_id;
+        NTS_AEAD_algorithm_type aead_id;
 
-	const char *ntp_server;
-	uint16_t ntp_port;
+        const char *ntp_server;
+        uint16_t ntp_port;
 
-	struct NTS_cookie {
-		uint8_t *data;
-		size_t length;
-	} cookie[8];
+        struct NTS_cookie {
+                uint8_t *data;
+                size_t length;
+        } cookie[8];
 };
 
 /* Encode a NTS KE request in the buffer of the provided size. If the third argument is not NULL,
@@ -100,6 +100,6 @@ int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, uint8_t *c2s, uint8_t *
 SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 
 extern thread_local enum NTS_SSL_error_type {
-	NTS_SSL_INTERNAL_ERROR,
-	NTS_SSL_NO_CONNECTION,
+        NTS_SSL_INTERNAL_ERROR,
+        NTS_SSL_NO_CONNECTION,
 } NTS_SSL_error;

@@ -3,7 +3,7 @@
 #include "nts.h"
 #include "nts_extfields.h"
 
-typedef struct {
+typedef struct AssociatedData {
         const uint8_t *data;
         const size_t length;
 } AssociatedData;

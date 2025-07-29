@@ -13,7 +13,7 @@ static const struct NTS_AEADParam supported_algos[] = {
 
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
-const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType id) {
+const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType id) {
         for (size_t i=0; i < ELEMS(supported_algos); i++)
                 if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];

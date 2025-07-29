@@ -5,6 +5,7 @@
 #include <threads.h>
 #include <openssl/ssl.h>
 
+/* algorithm type is not made into a full enum since it eases ptr-conversions */
 typedef uint16_t NTS_AEADAlgorithmType;
 enum {
         NTS_AEAD_AES_SIV_CMAC_256 = 15,
@@ -14,13 +15,13 @@ enum {
         NTS_AEAD_AES_256_GCM_SIV  = 31,
 };
 
-struct NTS_AEADParam {
+typedef struct NTS_AEADParam {
         uint8_t aead_id, key_size, block_size, nonce_size;
         bool tag_first, nonce_is_iv;
         const char *cipher_name;
-};
+} NTS_AEADParam;
 
-enum NTS_ErrorType {
+typedef enum NTS_ErrorType {
         NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
         NTS_ERROR_BAD_REQUEST = 1,
         NTS_ERROR_INTERNAL_SERVER_ERROR = 2,
@@ -33,9 +34,9 @@ enum NTS_ErrorType {
         NTS_INSUFFICIENT_DATA = 0x10005,
 
         NTS_SUCCESS = -1,
-};
+} NTS_ErrorType;
 
-struct NTS_Agreement {
+typedef struct NTS_Agreement {
         enum NTS_ErrorType error;
 
         NTS_AEADAlgorithmType aead_id;
@@ -47,7 +48,7 @@ struct NTS_Agreement {
                 uint8_t *data;
                 size_t length;
         } cookie[8];
-};
+} NTS_Agreement;
 
 /* Encode a NTS KE request in the buffer of the provided size. If the third argument is not NULL,
  * it must point to a NULL-terminated array of AEAD_algorithm-types that indicate the preferred AEAD
@@ -74,7 +75,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
  * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
  */
 
-const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType);
+const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType);
 
 /* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to
  * buffers that provide key_capacity amount of bytes
@@ -99,7 +100,9 @@ int NTS_SSL_extract_keys(SSL *, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2
  */
 SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 
-extern thread_local enum NTS_TLSErrorType {
+typedef enum NTS_TLSErrorType {
         NTS_SSL_INTERNAL_ERROR,
         NTS_SSL_NO_CONNECTION,
-} NTS_SSL_error;
+} NTS_TLSErrorType;
+
+extern thread_local enum NTS_TLSErrorType NTS_SSL_error;

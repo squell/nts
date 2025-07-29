@@ -18,7 +18,7 @@ int NTS_SSL_extract_keys(
         uint8_t *keys[] = { c2s, s2c };
         const char label[30] = { "EXPORTER-network-time-security" }; /* note: this does not include the zero byte */
 
-        const struct NTS_AEADParam *info = NTS_AEADParam(aead);
+        const struct NTS_AEADParam *info = NTS_GetParam(aead);
         if (!info)
                 return -3;
         else if (info->key_size > key_capacity)

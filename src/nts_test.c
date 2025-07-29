@@ -159,7 +159,7 @@ void test_ntp_field_encoding(void) {
                 { (uint8_t*)cookie, strlen(cookie) },
                 key,
                 key,
-                *NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256),
+                *NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256),
         };
 
         struct NTS_Receipt rcpt = { 0, };
@@ -237,7 +237,7 @@ static void test_ntp_field_decoding(void) {
                 { (uint8_t*)cookie, strlen(cookie) },
                 key,
                 key,
-                *NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256),
+                *NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256),
         };
 
         uint8_t *p =  buffer + 48;
@@ -310,25 +310,25 @@ void test_crypto(void) {
 
         /* test roundtrips for all ciphers */
         for (unsigned id=0; id <= 33; id++) {
-                if (!NTS_AEADParam(id)) continue;
-                int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, nonnull(NTS_AEADParam(id)), key);
+                if (!NTS_GetParam(id)) continue;
+                int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, nonnull(NTS_GetParam(id)), key);
                 assert(len > 0);
-                assert(NTS_decrypt(dec, enc, len, ad, nonnull(NTS_AEADParam(id)), key) == sizeof(plaintext));
+                assert(NTS_decrypt(dec, enc, len, ad, nonnull(NTS_GetParam(id)), key) == sizeof(plaintext));
                 assert(memcmp(dec, plaintext, sizeof(plaintext)) == 0);
         }
 
         /* test in-place decryption for the default cipher */
         memcpy(enc, plaintext, sizeof(plaintext));
-        int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, nonnull(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256)), key);
+        int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, nonnull(NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256)), key);
         assert(len == sizeof(plaintext)+16);
-        assert(NTS_decrypt(enc, enc, len, ad, nonnull(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256)), key) == sizeof(plaintext));
+        assert(NTS_decrypt(enc, enc, len, ad, nonnull(NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256)), key) == sizeof(plaintext));
         assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
         /* test known vectors AES_SIV_CMAC_256
          * we can't test these using Nettle; one way to check that we are on Nettle is currently that it does not
          * support SIV_CMAC_384
          */
-        if (NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_384)) {
+        if (NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_384)) {
 
                 uint8_t key[] = {
                         0x7f,0x7e,0x7d,0x7c, 0x7b,0x7a,0x79,0x78, 0x77,0x76,0x75,0x74, 0x73,0x72,0x71,0x70,
@@ -369,12 +369,12 @@ void test_crypto(void) {
                         { nonce, sizeof(nonce) },
                         { NULL }
                 };
-                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(ct));
+                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(ct));
                 assert(memcmp(out, ct, sizeof(ct)) == 0);
         }
 
         /* test known vectors - AES_128_GCM_SIV */
-        if (NTS_AEADParam(NTS_AEAD_AES_128_GCM_SIV)) {
+        if (NTS_GetParam(NTS_AEAD_AES_128_GCM_SIV)) {
                 uint8_t key[16] = { 1 };
                 uint8_t nonce[12] = { 3 };
                 uint8_t aad[1] = { 1 };
@@ -393,7 +393,7 @@ void test_crypto(void) {
 
                 uint8_t out[sizeof(ct)];
 
-                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEADParam(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
+                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_GetParam(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
                 assert(memcmp(out, ct, sizeof(ct)) == 0);
         }
 }
@@ -404,8 +404,8 @@ int main(void) {
         test_nts_decoding();
         test_ntp_field_encoding();
         test_ntp_field_decoding();
-        assert(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256)->key_size == 32);
-        assert(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_512)->key_size == 64);
+        assert(NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256)->key_size == 32);
+        assert(NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_512)->key_size == 64);
 
         return 0;
 }

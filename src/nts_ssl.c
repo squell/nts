@@ -69,12 +69,7 @@ SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), in
 		goto exit;
 	}
 
-	if(strcmp(hostname, "localhost") == 0) {
-		/* circumvent certificate checking for easy testing */
-		SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
-	} else {
-		SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-	}
+        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
 
 	(void) load_certs(ctx);
 

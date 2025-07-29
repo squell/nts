@@ -289,6 +289,12 @@ static void test_ntp_field_decoding(void) {
 	assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 }
 
+/* appease the gcc static analyzer */
+static const void* nonnull(const void *p) {
+        assert(p);
+        return p;
+}
+
 void test_crypto(void) {
 	uint8_t key[256];
 	uint8_t enc[100], dec[100];
@@ -305,20 +311,23 @@ void test_crypto(void) {
 	/* test roundtrips for all ciphers */
 	for(unsigned id=0; id <= 33; id++) {
 		if(!NTS_AEAD_param(id)) continue;
-		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, NTS_AEAD_param(id), key);
+		int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, nonnull(NTS_AEAD_param(id)), key);
 		assert(len > 0);
-		assert(NTS_decrypt(dec, enc, len, ad, NTS_AEAD_param(id), key) == sizeof(plaintext));
+		assert(NTS_decrypt(dec, enc, len, ad, nonnull(NTS_AEAD_param(id)), key) == sizeof(plaintext));
 		assert(memcmp(dec, plaintext, sizeof(plaintext)) == 0);
 	}
 
 	/* test in-place decryption for the default cipher */
 	memcpy(enc, plaintext, sizeof(plaintext));
-	int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key);
+	int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, nonnull(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256)), key);
 	assert(len == sizeof(plaintext)+16);
-	assert(NTS_decrypt(enc, enc, len, ad, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(plaintext));
+	assert(NTS_decrypt(enc, enc, len, ad, nonnull(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256)), key) == sizeof(plaintext));
 	assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
-	/* test known vectors AES_SIV_CMAC_256 */
+	/* test known vectors AES_SIV_CMAC_256
+         * we can't test these using Nettle; one way to check that we are on Nettle is currently that it does not
+         * support SIV_CMAC_384
+         */
 	if(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_384)) {
 
 		uint8_t key[] = {

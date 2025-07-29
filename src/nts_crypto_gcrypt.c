@@ -14,11 +14,9 @@ static const struct NTS_AEAD_param supported_algos[] = {
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
 const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
-        for (size_t i=0; i < ELEMS(supported_algos); i++) {
-                if (supported_algos[i].aead_id == id) {
+        for (size_t i=0; i < ELEMS(supported_algos); i++)
+                if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];
-                }
-        }
 
         return NULL;
 }
@@ -35,16 +33,15 @@ static int process_assoc_data(
         if (aead->nonce_is_iv) {
                 /* workaround for the GCM-SIV interface, where the IV is set directly */
                 assert(info->data);
-                for (last = info; (last+1)->data != NULL; ) {
+                for (last = info; (last+1)->data != NULL; )
                         last++;
-                }
+
                 check(last->length == aead->nonce_size);
                 check(gcry_cipher_setiv(handle, last->data, last->length) == GPG_ERR_NO_ERROR);
         }
 
-        for ( ; info->data && info != last; info++) {
+        for ( ; info->data && info != last; info++)
                 check(gcry_cipher_authenticate(handle, info->data, info->length) == GPG_ERR_NO_ERROR);
-        }
 
         return 1;
 exit:
@@ -84,9 +81,8 @@ int NTS_encrypt(uint8_t *ctxt,
         if (aead->tag_first) {
                 tag = ctxt;
                 ctxt += aead->block_size;
-        } else {
+        } else
                 tag = ctxt + ptxt_len;
-        }
 
         check(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
         check(gcry_cipher_encrypt(handle, ctxt, ptxt_len+aead->block_size, ptxt, ptxt_len) == GPG_ERR_NO_ERROR);
@@ -118,9 +114,9 @@ int NTS_decrypt(uint8_t *ptxt,
         if (aead->tag_first) {
                 tag = ctxt;
                 ctxt += aead->block_size;
-        } else {
+        } else
                 tag = ctxt + ctxt_len - aead->block_size;
-        }
+
         ctxt_len -= aead->block_size;
 
         check(gcry_cipher_set_decryption_tag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);

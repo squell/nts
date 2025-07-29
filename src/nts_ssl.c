@@ -19,11 +19,10 @@ int NTS_SSL_extract_keys(
         const char label[30] = { "EXPORTER-network-time-security" }; /* note: this does not include the zero byte */
 
         const struct NTS_AEAD_param *info = NTS_AEAD_param(aead);
-        if (!info) {
+        if (!info)
                 return -3;
-        } else if (info->key_size > key_capacity) {
+        else if (info->key_size > key_capacity)
                 return -2;
-        }
 
         for (int i=0; i < 2; i++) {
                 const uint8_t context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
@@ -31,9 +30,8 @@ int NTS_SSL_extract_keys(
                                         ssl,
                                         keys[i], info->key_size,
                                         label, sizeof label,
-                                        context, sizeof context, 1)) {
+                                        context, sizeof context, 1))
                         return -1;
-                }
         }
 
         return 0;
@@ -47,11 +45,11 @@ static BIO* connect_bio(const char *hostname, int port, int blocking) {
 
         int sock = NTS_attach_socket(hostname, port, SOCK_STREAM);
         if (sock < 0) return NULL;
+
         if (!blocking) {
                 int flags;
-                if ((flags = fcntl(sock, F_GETFL)) < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0) {
+                if ((flags = fcntl(sock, F_GETFL)) < 0 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
                         return close(sock), NULL;
-                }
         }
 
         BIO_set_fd(bio, sock, BIO_CLOSE);

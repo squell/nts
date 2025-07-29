@@ -62,9 +62,8 @@ struct NTS_record {
 };
 
 static int32_t NTS_decode_u16(struct NTS_record *record) {
-        if (capacity(&record->body) < 2) {
+        if (capacity(&record->body) < 2)
                 return -1;
-        }
 
         uint16_t result = u16_from_bytes(record->body.data);
         record->body.data += 2;
@@ -73,18 +72,16 @@ static int32_t NTS_decode_u16(struct NTS_record *record) {
 
 static int NTS_decode_record(slice *message, struct NTS_record *record) {
         size_t bytes_remaining = capacity(message);
-        if (bytes_remaining < 4) {
+        if (bytes_remaining < 4)
                 /* not enough byte to decode a header */
                 return -1;
-        }
 
         bool is_critical = message->data[0] >> 7;
 
         uint16_t body_size = u16_from_bytes(message->data + 2);
-        if (body_size > bytes_remaining - 4) {
+        if (body_size > bytes_remaining - 4)
                 /* not enough data in the slice to decode this header */
                 return -2;
-        }
 
         record->type = u16_from_bytes(message->data) & 0x7FFF;
         record->body.data = message->data += 4;
@@ -104,9 +101,8 @@ static int NTS_decode_record(slice *message, struct NTS_record *record) {
                 if (body_size % 2 != 0) goto error;
                 break;
         default:
-                if (is_critical) {
+                if (is_critical)
                         return -3;
-                }
                 break;
         case NTS_NTPv4Server:
         case NTS_NTPv4Cookie:
@@ -127,21 +123,18 @@ static int NTS_encode_record_u16(
                 const uint16_t *data, size_t num_words) {
 
         size_t bytes_remaining = capacity(message);
-        if (num_words >= 0x8000 || bytes_remaining < 4 + num_words*2) {
+        if (num_words >= 0x8000 || bytes_remaining < 4 + num_words*2)
                 /* not enough space */
                 return -1;
-        }
 
-        if (critical) {
+        if (critical)
                 type |= 0x8000;
-        }
 
         push_u16(&message->data, type);
         push_u16(&message->data, num_words * 2);
 
-        for (size_t i = 0; i < num_words; i++) {
+        for (size_t i = 0; i < num_words; i++)
                 push_u16(&message->data, data[i]);
-        }
 
         return 0;
 }
@@ -163,7 +156,8 @@ int NTS_encode_request(
         size_t aead_len = ELEMS(aead_default);
         if (preferred_crypto) {
                 aead = preferred_crypto;
-                for (aead_len = 0; preferred_crypto[aead_len] ; ) ++aead_len;
+                for (aead_len = 0; preferred_crypto[aead_len] ; )
+			++aead_len;
         }
 
         int result;
@@ -211,10 +205,10 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *
                         return -1;
 
                 case NTS_EndOfMessage:
-                        if (ntp_server_terminator) {
+                        if (ntp_server_terminator)
                                 /* this hack saves having to allocate a string that we are going to keep in-memory */
                                 *ntp_server_terminator = '\0';
-                        }
+
                         if (is_ntp4 && response->aead_id != 0) {
                                 response->error = NTS_SUCCESS;
                                 return 0;
@@ -250,9 +244,9 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *
                 case NTS_NTPv4Server:
                         /* do limited sanity check */
                         check(capacity(&rec.body) <= 255, NTS_BAD_RESPONSE);
-                        for (const uint8_t* p = rec.body.data; p != rec.body.data_end; p++) {
+                        for (const uint8_t* p = rec.body.data; p != rec.body.data_end; p++)
                                 check(isascii(*p) && isgraph(*p), NTS_BAD_RESPONSE);
-                        }
+
                         response->ntp_server  = (char *)rec.body.data;
                         ntp_server_terminator = (char *)rec.body.data_end;
                         break;

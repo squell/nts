@@ -63,9 +63,9 @@ void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtr
         assert(n >= (int)sizeof(packet));
 
         assert((packet.li_vn_mode & 077) == 044);
-        if (packet.stratum == 0) {
+        if (packet.stratum == 0)
                 printf("Kiss of death: %.4s\n", packet.reference_id);
-        }
+
         assert(packet.stratum != 0);
         assert(start == be64toh(packet.timestamp[1]));
 

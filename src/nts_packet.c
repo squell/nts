@@ -34,7 +34,7 @@ enum NTS_ProtocolType {
         NTS_PROTO_NTPv4 = 0,
 };
 
-typedef struct {
+typedef struct slice {
         uint8_t *data;
         uint8_t *data_end;
 } slice;
@@ -229,7 +229,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
                         /* confirm that one of the supported AEAD algo's is offered */
                         check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
                         response->aead_id = val;
-                        check(NTS_AEADParam(response->aead_id), NTS_NO_AEAD);
+                        check(NTS_GetParam(response->aead_id), NTS_NO_AEAD);
                         break;
 
                 case NTS_NTPv4Cookie:

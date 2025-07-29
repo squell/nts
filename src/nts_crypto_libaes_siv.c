@@ -8,7 +8,7 @@ static const struct NTS_AEADParam
         siv512 = { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
         siv384 = { NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" };
 
-const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType id) {
+const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType id) {
         switch (id) {
         case NTS_AEAD_AES_SIV_CMAC_256:
                 return &siv256;

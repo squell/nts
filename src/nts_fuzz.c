@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
         if (len < 48) return 0;
 
         struct NTS_Query nts = (struct NTS_Query) {
-                .cipher = *NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256),
+                .cipher = *NTS_GetParam(NTS_AEAD_AES_SIV_CMAC_256),
                 .c2s_key = (void*)"01234567890abcdef",
                 .s2c_key = (void*)"01234567890abcdef",
         };
@@ -78,7 +78,7 @@ int NTS_decrypt(uint8_t *ptxt,
         return ctxt_len - BLKSIZ;
 }
 
-const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType id) {
+const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType id) {
         static struct NTS_AEADParam param = {
                 NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV"
         };

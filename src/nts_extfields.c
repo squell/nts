@@ -17,7 +17,7 @@
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
-typedef struct {
+typedef struct slice {
         uint8_t *data;
         uint8_t *data_end;
 } slice;

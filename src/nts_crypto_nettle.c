@@ -83,6 +83,7 @@ int NTS_encrypt(uint8_t *ctxt,
 			);
 			break;
 		}
+#ifdef SIV_GCM_BLOCK_SIZE
 		case NTS_AEAD_AES_128_GCM_SIV: {
 			struct aes128_ctx *state = &ctx_obj.aes128;
 			aes128_set_encrypt_key(state, key);
@@ -107,6 +108,7 @@ int NTS_encrypt(uint8_t *ctxt,
 			);
 			break;
 		}
+#endif
 		default:
 			assert(!"unreachable");
 	}
@@ -163,6 +165,7 @@ int NTS_decrypt(uint8_t *ptxt,
 			));
 			break;
 		}
+#ifdef SIV_GCM_BLOCK_SIZE
 		case NTS_AEAD_AES_128_GCM_SIV: {
 			struct aes128_ctx *state = &ctx_obj.aes128;
 			aes128_set_encrypt_key(state, key);
@@ -187,6 +190,7 @@ int NTS_decrypt(uint8_t *ptxt,
 			));
 			break;
 		}
+#endif
 		default:
 			assert(!"unreachable");
 	}

@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "nts.h"
+#include "nts_crypto.h"
 #include "nts_extfields.h"
 
 void eat(volatile const uint8_t* buf, size_t size) {
@@ -46,17 +47,29 @@ int main(int argc, char **argv) {
 
 #define BLKSIZ 16
 
-int NTS_encrypt(uint8_t *ctxt, const uint8_t *ptxt, int ptxt_len, const void *info, const void *nts) {
+int NTS_encrypt(uint8_t *ctxt,
+		const uint8_t *ptxt,
+		int ptxt_len,
+		const associated_data *info,
+		const struct NTS_AEAD_param *nts,
+		const uint8_t *key) {
 	(void) info;
 	(void) nts;
+	(void) key;
 	memset(ctxt, 0xEE, BLKSIZ);
 	memmove(ctxt+BLKSIZ, ptxt, ptxt_len);
 	return ptxt_len + BLKSIZ;
 }
 
-int NTS_decrypt(uint8_t *ptxt, const uint8_t *ctxt, int ctxt_len, const void *info, const void *nts) {
+int NTS_decrypt(uint8_t *ptxt,
+		const uint8_t *ctxt,
+		int ctxt_len,
+		const associated_data *info,
+		const struct NTS_AEAD_param *nts,
+		const uint8_t *key) {
 	(void) info;
 	(void) nts;
+	(void) key;
 	if(ctxt_len < BLKSIZ) return -1;
 
 	memmove(ptxt, ctxt+16, ctxt_len - BLKSIZ);

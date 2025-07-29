@@ -2,16 +2,16 @@
 
 #include "nts.h"
 
-struct NTS_Query {
+typedef struct NTS_Query {
         struct NTS_Cookie cookie;
         const uint8_t *c2s_key, *s2c_key;
         struct NTS_AEADParam cipher;
-};
+} NTS_Qyery;
 
-struct NTS_Receipt {
+typedef struct NTS_Receipt {
         uint8_t (*identifier)[32];
         struct NTS_Cookie new_cookie;
-};
+} NTS_Receipt;
 
 /* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.
  * If identifier is not NULL, it will hold the generated unique identifier upon success.

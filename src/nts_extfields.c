@@ -108,14 +108,14 @@ int NTS_add_extension_fields(
         assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + nts->cipher.block_size);
 
         int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, &nts->cipher, nts->c2s_key);
-        check(ctxt_len >= 0);
+        check(ctxt_len >= 0 && ctxt_len <= 0xFFFF);
 
         /* add padding if we used a too-short nonce */
         int ef_len = 4 + ctxt_len + nonce_len + (nonce_len < req_nonce_len)*(req_nonce_len - nonce_len);
 
         /* set the ciphertext length */
-        ctxt_len = htobe16(ctxt_len);
-        memcpy(EF+2, &ctxt_len, 2);
+        uint16_t encoded_len = htobe16(ctxt_len);
+        memcpy(EF+2, &encoded_len, 2);
 
         check(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
 

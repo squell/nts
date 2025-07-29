@@ -37,4 +37,4 @@ int main(int argc, char **argv) {
 
 int STUB(NTS_decrypt, -1)
 int STUB(NTS_encrypt, -1)
-void *STUB(NTS_AEAD_param, NULL)
+void *STUB(NTS_AEADParam, NULL)

@@ -3,12 +3,12 @@
 #include <assert.h>
 #include <aes_siv.h>
 
-static const struct NTS_AEAD_param
+static const struct NTS_AEADParam
         siv256 = { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
         siv512 = { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
         siv384 = { NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" };
 
-const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
+const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType id) {
         switch (id) {
         case NTS_AEAD_AES_SIV_CMAC_256:
                 return &siv256;
@@ -26,8 +26,8 @@ const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
 int NTS_encrypt(uint8_t *ctxt,
                 const uint8_t *ptxt,
                 int ptxt_len,
-                const associated_data *info,
-                const struct NTS_AEAD_param *aead,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;
@@ -56,8 +56,8 @@ exit:
 int NTS_decrypt(uint8_t *ptxt,
                 const uint8_t *ctxt,
                 int ctxt_len,
-                const associated_data *info,
-                const struct NTS_AEAD_param *aead,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;

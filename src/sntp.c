@@ -39,7 +39,7 @@ static uint64_t get_current_ntp_time(void) {
 
 int NTS_attach_socket(const char *host, int port, int type);
 
-void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtrip_delay, double *time_offset) {
+void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtrip_delay, double *time_offset) {
         int sock = NTS_attach_socket(host, port, SOCK_DGRAM);
         assert(sock > 0);
 
@@ -71,7 +71,7 @@ void nts_poll(const char *host, int port, struct NTS_query *cfg, double *roundtr
 
         if (cfg) {
                 assert(n > 48);
-                struct NTS_receipt rcpt = { 0, };
+                struct NTS_Receipt rcpt = { 0, };
                 assert(NTS_parse_extension_fields(&buf, n, cfg, &rcpt));
                 assert(rcpt.identifier);
                 assert(memcmp(rcpt.identifier, unique, 32) == 0);

@@ -9,7 +9,7 @@
 #  error Your Nettle version is too old.
 #endif
 
-static const struct NTS_AEAD_param supported_algos[] = {
+static const struct NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
         { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
 #ifdef SIV_GCM_BLOCK_SIZE
@@ -20,7 +20,7 @@ static const struct NTS_AEAD_param supported_algos[] = {
 
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
-const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
+const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType id) {
         for (size_t i=0; i < ELEMS(supported_algos); i++)
                 if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];
@@ -40,8 +40,8 @@ union ctx {
 int NTS_encrypt(uint8_t *ctxt,
                 const uint8_t *ptxt,
                 int ptxt_len,
-                const associated_data *info,
-                const struct NTS_AEAD_param *aead,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         assert(info[0].data);
@@ -118,8 +118,8 @@ int NTS_encrypt(uint8_t *ctxt,
 int NTS_decrypt(uint8_t *ptxt,
                 const uint8_t *ctxt,
                 int ctxt_len,
-                const associated_data *info,
-                const struct NTS_AEAD_param *aead,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;

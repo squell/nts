@@ -13,7 +13,7 @@
 
 #define ELEMS(array) (sizeof(array) / sizeof(*array))
 
-enum NTS_record_type {
+enum NTS_RecordType {
         /* critical */
         NTS_EndOfMessage = 0,
         NTS_NextProto = 1,
@@ -30,7 +30,7 @@ enum NTS_record_type {
         NTS_Chrony_BugWorkaround = 1024,
 };
 
-enum NTS_protocol_type {
+enum NTS_ProtocolType {
         NTS_PROTO_NTPv4 = 0,
 };
 
@@ -56,12 +56,12 @@ static uint16_t u16_from_bytes(uint8_t bytes[2]) {
         return be16toh(value);
 }
 
-struct NTS_record {
+struct NTS_Record {
         uint16_t type;
         slice body;
 };
 
-static int32_t NTS_decode_u16(struct NTS_record *record) {
+static int32_t NTS_decode_u16(struct NTS_Record *record) {
         if (capacity(&record->body) < 2)
                 return -1;
 
@@ -70,7 +70,7 @@ static int32_t NTS_decode_u16(struct NTS_record *record) {
         return result;
 }
 
-static int NTS_decode_record(slice *message, struct NTS_record *record) {
+static int NTS_decode_record(slice *message, struct NTS_Record *record) {
         size_t bytes_remaining = capacity(message);
         if (bytes_remaining < 4)
                 /* not enough byte to decode a header */
@@ -119,7 +119,7 @@ error:
 static int NTS_encode_record_u16(
                 slice *message,
                 bool critical,
-                enum NTS_record_type type,
+                enum NTS_RecordType type,
                 const uint16_t *data, size_t num_words) {
 
         size_t bytes_remaining = capacity(message);
@@ -142,7 +142,7 @@ static int NTS_encode_record_u16(
 int NTS_encode_request(
                 uint8_t *buffer,
                 size_t buf_size,
-                const NTS_AEAD_algorithm_type *preferred_crypto) {
+                const NTS_AEADAlgorithmType *preferred_crypto) {
 
         slice request = { buffer, buffer + buf_size };
 
@@ -171,9 +171,9 @@ int NTS_encode_request(
         return (result<0)? result : request.data - buffer;
 }
 
-int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *response) {
+int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *response) {
         slice raw_response = { buffer, buffer+buf_size };
-        struct NTS_record rec;
+        struct NTS_Record rec;
 
         /* clear response */
         size_t cookie_nr = 0;
@@ -181,7 +181,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *
         char *ntp_server_terminator = NULL;
 
         /* make sure the result is only OK if we really succeed */
-        *response = (struct NTS_agreement) { .error = NTS_INTERNAL_CLIENT_ERROR };
+        *response = (struct NTS_Agreement) { .error = NTS_INTERNAL_CLIENT_ERROR };
 
         #define check(expr, err) {               \
                 if (expr); else {                 \
@@ -229,13 +229,13 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *
                         /* confirm that one of the supported AEAD algo's is offered */
                         check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
                         response->aead_id = val;
-                        check(NTS_AEAD_param(response->aead_id), NTS_NO_AEAD);
+                        check(NTS_AEADParam(response->aead_id), NTS_NO_AEAD);
                         break;
 
                 case NTS_NTPv4Cookie:
                         /* ignore any cookies in excess of eight */
                         if (cookie_nr < 8) {
-                                struct NTS_cookie *cookie = &response->cookie[cookie_nr++];
+                                struct NTS_Cookie *cookie = &response->cookie[cookie_nr++];
                                 cookie->data   = rec.body.data;
                                 cookie->length = rec.body.data_end - rec.body.data;
                         }

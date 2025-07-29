@@ -34,7 +34,7 @@ static void encode_ptr_len_data(
 
 void test_nts_encoding(void) {
         uint8_t buffer[1000];
-        struct NTS_agreement rec;
+        struct NTS_Agreement rec;
 
         NTS_encode_request(buffer, sizeof buffer, NULL);
         assert(NTS_decode_response(buffer, 1000, &rec) == 0);
@@ -68,7 +68,7 @@ void test_nts_encoding(void) {
 
 void test_nts_decoding(void) {
         uint8_t buffer[0x10000], *p;
-        struct NTS_agreement rec;
+        struct NTS_Agreement rec;
 
         /* empty */
         uint8_t value[2] = { 0, };
@@ -155,14 +155,14 @@ void test_ntp_field_encoding(void) {
         uint8_t key[32] = { 0, };
         char cookie[] = "PAD";
 
-        struct NTS_query nts = {
+        struct NTS_Query nts = {
                 { (uint8_t*)cookie, strlen(cookie) },
                 key,
                 key,
-                *NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
+                *NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256),
         };
 
-        struct NTS_receipt rcpt = { 0, };
+        struct NTS_Receipt rcpt = { 0, };
         int len = NTS_add_extension_fields(&buffer, &nts, NULL);
         assert(len > 48);
         assert(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
@@ -187,7 +187,7 @@ void test_ntp_field_encoding(void) {
 void add_encrypted_server_hdr(
                 uint8_t *buffer,
                 uint8_t **p_ptr,
-                struct NTS_query nts,
+                struct NTS_Query nts,
                 const char *cookie,
                 uint8_t *corrupt) {
 
@@ -233,11 +233,11 @@ static void test_ntp_field_decoding(void) {
         char cookie[] = "COOKIE";
         uint8_t key[32] = { 0, };
 
-        struct NTS_query nts = {
+        struct NTS_Query nts = {
                 { (uint8_t*)cookie, strlen(cookie) },
                 key,
                 key,
-                *NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
+                *NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256),
         };
 
         uint8_t *p =  buffer + 48;
@@ -248,7 +248,7 @@ static void test_ntp_field_decoding(void) {
         encode_record_raw_ext(&p, 0x0104, ident, 32);
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
 
-        struct NTS_receipt rcpt = { 0, };
+        struct NTS_Receipt rcpt = { 0, };
         assert(NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         assert(memcmp(rcpt.identifier, ident, 32) == 0);
@@ -302,7 +302,7 @@ void test_crypto(void) {
 
         for (unsigned i = 0; i < sizeof(key); i++) key[i] = i * 0x11 & 0xFF;
 
-        const associated_data ad[] = {
+        const AssociatedData ad[] = {
                 { (uint8_t*)"FNORD", 5 },
                 { (uint8_t*)"XXXXNONCEXXX", 12 },
                 { NULL },
@@ -310,25 +310,25 @@ void test_crypto(void) {
 
         /* test roundtrips for all ciphers */
         for (unsigned id=0; id <= 33; id++) {
-                if (!NTS_AEAD_param(id)) continue;
-                int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, nonnull(NTS_AEAD_param(id)), key);
+                if (!NTS_AEADParam(id)) continue;
+                int len = NTS_encrypt(enc, plaintext, sizeof(plaintext), ad, nonnull(NTS_AEADParam(id)), key);
                 assert(len > 0);
-                assert(NTS_decrypt(dec, enc, len, ad, nonnull(NTS_AEAD_param(id)), key) == sizeof(plaintext));
+                assert(NTS_decrypt(dec, enc, len, ad, nonnull(NTS_AEADParam(id)), key) == sizeof(plaintext));
                 assert(memcmp(dec, plaintext, sizeof(plaintext)) == 0);
         }
 
         /* test in-place decryption for the default cipher */
         memcpy(enc, plaintext, sizeof(plaintext));
-        int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, nonnull(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256)), key);
+        int len = NTS_encrypt(enc, enc, sizeof(plaintext), ad, nonnull(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256)), key);
         assert(len == sizeof(plaintext)+16);
-        assert(NTS_decrypt(enc, enc, len, ad, nonnull(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256)), key) == sizeof(plaintext));
+        assert(NTS_decrypt(enc, enc, len, ad, nonnull(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256)), key) == sizeof(plaintext));
         assert(memcmp(enc, plaintext, sizeof(plaintext)) == 0);
 
         /* test known vectors AES_SIV_CMAC_256
          * we can't test these using Nettle; one way to check that we are on Nettle is currently that it does not
          * support SIV_CMAC_384
          */
-        if (NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_384)) {
+        if (NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_384)) {
 
                 uint8_t key[] = {
                         0x7f,0x7e,0x7d,0x7c, 0x7b,0x7a,0x79,0x78, 0x77,0x76,0x75,0x74, 0x73,0x72,0x71,0x70,
@@ -363,24 +363,24 @@ void test_crypto(void) {
 
                 uint8_t out[sizeof(ct)];
 
-                const associated_data info[] = {
+                const AssociatedData info[] = {
                         { aad1, sizeof(aad1) },
                         { aad2, sizeof(aad2) },
                         { nonce, sizeof(nonce) },
                         { NULL }
                 };
-                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(ct));
+                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256), key) == sizeof(ct));
                 assert(memcmp(out, ct, sizeof(ct)) == 0);
         }
 
         /* test known vectors - AES_128_GCM_SIV */
-        if (NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV)) {
+        if (NTS_AEADParam(NTS_AEAD_AES_128_GCM_SIV)) {
                 uint8_t key[16] = { 1 };
                 uint8_t nonce[12] = { 3 };
                 uint8_t aad[1] = { 1 };
                 uint8_t pt[8] = { 2 };
 
-                const associated_data info[] = {
+                const AssociatedData info[] = {
                         { aad, sizeof(aad) },
                         { nonce, sizeof(nonce) },
                         { NULL }
@@ -393,7 +393,7 @@ void test_crypto(void) {
 
                 uint8_t out[sizeof(ct)];
 
-                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEAD_param(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
+                assert(NTS_encrypt(out, pt, sizeof(pt), info, NTS_AEADParam(NTS_AEAD_AES_128_GCM_SIV), key) == sizeof(ct));
                 assert(memcmp(out, ct, sizeof(ct)) == 0);
         }
 }
@@ -404,8 +404,8 @@ int main(void) {
         test_nts_decoding();
         test_ntp_field_encoding();
         test_ntp_field_decoding();
-        assert(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256)->key_size == 32);
-        assert(NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_512)->key_size == 64);
+        assert(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256)->key_size == 32);
+        assert(NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_512)->key_size == 64);
 
         return 0;
 }

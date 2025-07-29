@@ -172,13 +172,13 @@ void test_ntp_field_encoding(void) {
         assert(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
 
         for (int i=0; i < len; i++) {
-                memset(&rcpt, 0, sizeof(rcpt));
+                zero(rcpt);
                 len = NTS_add_extension_fields(&buffer, &nts, NULL);
                 buffer[i] ^= 0x20;
                 assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
         }
 
-        memset(&rcpt, 0, sizeof(rcpt));
+        zero(rcpt);
         len = NTS_add_extension_fields(&buffer, &nts, NULL);
         nts.s2c_key = (uint8_t[32]){ 1, };
         assert(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
@@ -217,7 +217,7 @@ void add_encrypted_server_hdr(
         EVP_CIPHER_free(cipher);
 
         /* set type to 0x404 */
-        memset(af, 0, 8);
+        memzero(af, 8);
         af[0] = af[1] = 0x04;
         /* set overall packet length */
         af[3] = *p_ptr - af;
@@ -261,13 +261,13 @@ static void test_ntp_field_decoding(void) {
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
         encode_record_raw_ext(&p, 0x0104, ident, 32);
 
-        memset(&rcpt, 0, sizeof(rcpt));
+        zero(rcpt);
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* no authentication at all */
         p = buffer + 48;
         encode_record_raw(&p, 0x0104, ident, 32);
-        memset(&rcpt, 0, sizeof(rcpt));
+        zero(rcpt);
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* malicious unencrypted field */
@@ -275,7 +275,7 @@ static void test_ntp_field_decoding(void) {
         encode_record_raw_ext(&p, 0x0104, ident, 32);
         add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
         buffer[48+2] = 0xee;
-        memset(&rcpt, 0, sizeof(rcpt));
+        zero(rcpt);
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         /* malicious encrypted field */
@@ -285,7 +285,7 @@ static void test_ntp_field_decoding(void) {
          * so at p+34 is the MSB of the first field length */
         add_encrypted_server_hdr(buffer, &p, nts, cookie, p+34);
 
-        memset(&rcpt, 0, sizeof(rcpt));
+        zero(rcpt);
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 }
 

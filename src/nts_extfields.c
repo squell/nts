@@ -43,7 +43,7 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
         memcpy(buf->data+2, &len, 2);
 
         buf->data += padded_len;
-        memset(buf->data - padding, 0, padding);
+        memzero(buf->data - padding, padding);
         return padded_len;
 }
 

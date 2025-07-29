@@ -4,8 +4,8 @@
 #include "nts_extfields.h"
 
 typedef struct {
-	const uint8_t *data;
-	const size_t length;
+        const uint8_t *data;
+        const size_t length;
 } associated_data;
 
 /* encrypt the data in ptxt of ptxt_len bytes, and write it to ctxt, using the selected cryptoscheme and key
@@ -16,11 +16,11 @@ typedef struct {
  * RETURNS: the number of bytes in the ciphertext (< 0 indicates an error)
  */
 int NTS_encrypt(uint8_t *ctxt,
-		const uint8_t *ptxt,
-		int ptxt_len,
-		const associated_data *,
-		const struct NTS_AEAD_param *,
-		const uint8_t *key);
+                const uint8_t *ptxt,
+                int ptxt_len,
+                const associated_data *,
+                const struct NTS_AEAD_param *,
+                const uint8_t *key);
 
 /* decrypt the data in ctxt of ctxt_len bytes, and write it to ptxt, using the selected cryptoscheme and key
  *
@@ -32,8 +32,8 @@ int NTS_encrypt(uint8_t *ctxt,
  * RETURNS: the number of bytes in the decrypted plaintext (< 0 indicates an error)
  */
 int NTS_decrypt(uint8_t *ptxt,
-		const uint8_t *ctxt,
-		int ctxt_len,
-		const associated_data *,
-		const struct NTS_AEAD_param *,
-		const uint8_t *key);
+                const uint8_t *ctxt,
+                int ctxt_len,
+                const associated_data *,
+                const struct NTS_AEAD_param *,
+                const uint8_t *key);

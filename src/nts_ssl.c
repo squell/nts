@@ -10,7 +10,7 @@
 
 int NTS_SSL_extract_keys(
                 SSL *ssl,
-                NTS_AEAD_algorithm_type aead,
+                NTS_AEADAlgorithmType aead,
                 uint8_t *c2s,
                 uint8_t *s2c,
                 int key_capacity) {
@@ -18,7 +18,7 @@ int NTS_SSL_extract_keys(
         uint8_t *keys[] = { c2s, s2c };
         const char label[30] = { "EXPORTER-network-time-security" }; /* note: this does not include the zero byte */
 
-        const struct NTS_AEAD_param *info = NTS_AEAD_param(aead);
+        const struct NTS_AEADParam *info = NTS_AEADParam(aead);
         if (!info)
                 return -3;
         else if (info->key_size > key_capacity)
@@ -56,7 +56,7 @@ static BIO* connect_bio(const char *hostname, int port, int blocking) {
         return bio;
 }
 
-thread_local enum NTS_SSL_error_type NTS_SSL_error;
+thread_local enum NTS_TLSErrorType NTS_SSL_error;
 
 #define expect(expr) if (expr)
 

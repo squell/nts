@@ -21,21 +21,21 @@ int main(int argc, char **argv) {
         int len = read(file, buffer, 1280);
         if (len < 48) return 0;
 
-        struct NTS_query nts = (struct NTS_query) {
-                .cipher = *NTS_AEAD_param(NTS_AEAD_AES_SIV_CMAC_256),
+        struct NTS_Query nts = (struct NTS_Query) {
+                .cipher = *NTS_AEADParam(NTS_AEAD_AES_SIV_CMAC_256),
                 .c2s_key = (void*)"01234567890abcdef",
                 .s2c_key = (void*)"01234567890abcdef",
         };
 
         if (argc > 2) {
                 /* fuzz the nts ke */
-                struct NTS_agreement rec;
+                struct NTS_Agreement rec;
                 if (NTS_decode_response(buffer, len, &rec) == 0) {
                         for (int i = 0; i < 8; i++)
                                 eat(rec.cookie[i].data, rec.cookie[i].length);
                 }
         } else {
-                struct NTS_receipt rcpt = { 0, };
+                struct NTS_Receipt rcpt = { 0, };
                 if (NTS_parse_extension_fields(&buffer, len, &nts, &rcpt)) {
                         eat(rcpt.new_cookie.data, rcpt.new_cookie.length);
                         eat(*rcpt.identifier, 32);
@@ -52,8 +52,8 @@ int main(int argc, char **argv) {
 int NTS_encrypt(uint8_t *ctxt,
                 const uint8_t *ptxt,
                 int ptxt_len,
-                const associated_data *info,
-                const struct NTS_AEAD_param *nts,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *nts,
                 const uint8_t *key) {
         (void) info;
         (void) nts;
@@ -66,8 +66,8 @@ int NTS_encrypt(uint8_t *ctxt,
 int NTS_decrypt(uint8_t *ptxt,
                 const uint8_t *ctxt,
                 int ctxt_len,
-                const associated_data *info,
-                const struct NTS_AEAD_param *nts,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *nts,
                 const uint8_t *key) {
         (void) info;
         (void) nts;
@@ -78,8 +78,8 @@ int NTS_decrypt(uint8_t *ptxt,
         return ctxt_len - BLKSIZ;
 }
 
-const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type id) {
-        static struct NTS_AEAD_param param = {
+const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType id) {
+        static struct NTS_AEADParam param = {
                 NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV"
         };
         return id? &param : NULL;

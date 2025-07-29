@@ -5,7 +5,7 @@
 #include <threads.h>
 #include <openssl/ssl.h>
 
-typedef uint16_t NTS_AEAD_algorithm_type;
+typedef uint16_t NTS_AEADAlgorithmType;
 enum {
         NTS_AEAD_AES_SIV_CMAC_256 = 15,
         NTS_AEAD_AES_SIV_CMAC_384 = 16,
@@ -14,13 +14,13 @@ enum {
         NTS_AEAD_AES_256_GCM_SIV  = 31,
 };
 
-struct NTS_AEAD_param {
+struct NTS_AEADParam {
         uint8_t aead_id, key_size, block_size, nonce_size;
         bool tag_first, nonce_is_iv;
         const char *cipher_name;
 };
 
-enum NTS_error_type {
+enum NTS_ErrorType {
         NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
         NTS_ERROR_BAD_REQUEST = 1,
         NTS_ERROR_INTERNAL_SERVER_ERROR = 2,
@@ -35,15 +35,15 @@ enum NTS_error_type {
         NTS_SUCCESS = -1,
 };
 
-struct NTS_agreement {
-        enum NTS_error_type error;
+struct NTS_Agreement {
+        enum NTS_ErrorType error;
 
-        NTS_AEAD_algorithm_type aead_id;
+        NTS_AEADAlgorithmType aead_id;
 
         const char *ntp_server;
         uint16_t ntp_port;
 
-        struct NTS_cookie {
+        struct NTS_Cookie {
                 uint8_t *data;
                 size_t length;
         } cookie[8];
@@ -57,16 +57,16 @@ struct NTS_agreement {
  *      non-zero number of bytes encoded upon success
  *      negative value upon failure (not enough room in buffer)
  */
-int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEAD_algorithm_type[]);
+int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEADAlgorithmType[]);
 
 /* Decode a NTS KE reponse in the buffer of the provided size, and write the result to the NTS_reponse
  * struct.
  *
  * RETURNS
  *      0 upon success
- *      -1 upon failure (writes the error code to NTS_agreement->error)
+ *      -1 upon failure (writes the error code to NTS_Agreement->error)
  */
-int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *);
+int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *);
 
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes
@@ -74,7 +74,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_agreement *
  * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
  */
 
-const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type);
+const struct NTS_AEADParam* NTS_AEADParam(NTS_AEADAlgorithmType);
 
 /* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to
  * buffers that provide key_capacity amount of bytes
@@ -86,7 +86,7 @@ const struct NTS_AEAD_param* NTS_AEAD_param(NTS_AEAD_algorithm_type);
  *              -2 not enough space in buffer
  *              -3 unkown AEAD
  */
-int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, uint8_t *c2s, uint8_t *s2c, int key_capacity);
+int NTS_SSL_extract_keys(SSL *, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2c, int key_capacity);
 
 /* Setup a SSL object that is connected to hostname:port, ready to begin a TLS handshake.
  * Accepted certificates are loaded using the provided function pointer
@@ -99,7 +99,7 @@ int NTS_SSL_extract_keys(SSL *, NTS_AEAD_algorithm_type, uint8_t *c2s, uint8_t *
  */
 SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
 
-extern thread_local enum NTS_SSL_error_type {
+extern thread_local enum NTS_TLSErrorType {
         NTS_SSL_INTERNAL_ERROR,
         NTS_SSL_NO_CONNECTION,
 } NTS_SSL_error;

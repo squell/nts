@@ -58,7 +58,7 @@ enum extfields {
 
 int NTS_add_extension_fields(
                 uint8_t (*dest)[1280],
-                const struct NTS_query *nts,
+                const struct NTS_Query *nts,
                 uint8_t (*uniq_id)[32]) {
 
         slice buf = { *dest, *dest + 1280 };
@@ -99,7 +99,7 @@ int NTS_add_extension_fields(
         getrandom(EF+4, nonce_len, 0);
         uint8_t *EF_payload = EF+4+nonce_len;
 
-        associated_data info[] = {
+        AssociatedData info[] = {
                 { *dest, buf.data - *dest },  /* aad */
                 { EF+4,  nonce_len },         /* nonce */
                 { NULL },
@@ -133,8 +133,8 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, uint8_t *byte
 int NTS_parse_extension_fields(
                 uint8_t (*src)[1280],
                 size_t src_len,
-                const struct NTS_query *nts,
-                struct NTS_receipt *fields) {
+                const struct NTS_Query *nts,
+                struct NTS_Receipt *fields) {
 
         assert(src_len >= 48 && src_len <= sizeof(*src));
         slice buf = { *src + 48, *src + src_len };
@@ -159,7 +159,7 @@ int NTS_parse_extension_fields(
                         uint8_t *nonce = buf.data + 8;
                         uint8_t *content = nonce + nonce_len;
 
-                        associated_data info[] = {
+                        AssociatedData info[] = {
                                 { *src, buf.data - *src }, /* aad */
                                 { nonce, nonce_len },      /* nonce */
                                 { NULL },

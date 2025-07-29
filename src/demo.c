@@ -35,7 +35,7 @@ int main(int argc, char **argv)
                 prefs = pref_arr;
                 for (char **arg = argv+2; *arg; arg++) {
                         #define parse(type) if (strstr(#type, *arg)) \
-                                (void) (NTS_AEAD_param(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type))
+                                (void) (NTS_AEADParam(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type))
                         if (strnlen(*arg, 3) < 3) continue; else
                         parse(AEAD_AES_SIV_CMAC_256); else
                         parse(AEAD_AES_SIV_CMAC_384); else
@@ -63,18 +63,18 @@ int main(int argc, char **argv)
          * Get up to sizeof(buf) bytes of the response. We keep reading until the
          * server closes the connection.
          */
-        struct NTS_query nts;
+        struct NTS_Query nts;
 
         while (SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
-                struct NTS_agreement NTS;
+                struct NTS_Agreement NTS;
                 assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
                 if (NTS.error >= 0) {
                         printf("NTS error: 0x%04X\n", NTS.error);
                         goto end;
                 }
 
-                assert(NTS_AEAD_param(NTS.aead_id));
-                printf("selected AEAD: %s\n", NTS_AEAD_param(NTS.aead_id)->cipher_name);
+                assert(NTS_AEADParam(NTS.aead_id));
+                printf("selected AEAD: %s\n", NTS_AEADParam(NTS.aead_id)->cipher_name);
 
                 #define FALLBACK(x, y) (x? x : y)
                 hostname = FALLBACK(NTS.ntp_server, hostname);
@@ -93,8 +93,8 @@ int main(int argc, char **argv)
                 }
 
                 static uint8_t c2s[64], s2c[64];
-                nts = (struct NTS_query) {
-                        .cipher = *NTS_AEAD_param(NTS.aead_id),
+                nts = (struct NTS_Query) {
+                        .cipher = *NTS_AEADParam(NTS.aead_id),
                         .c2s_key = c2s,
                         .s2c_key = s2c,
                         .cookie = *NTS.cookie,

@@ -1,9 +1,8 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <threads.h>
-#include <openssl/ssl.h>
 
 /* algorithm type is not made into a full enum since it eases ptr-conversions */
 typedef uint16_t NTS_AEADAlgorithmType;
@@ -77,8 +76,8 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
 
 const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType);
 
-/* Perform key extraction on the SSL object using the specified algorithm_type. C2S and S2C must point to
- * buffers that provide key_capacity amount of bytes
+/* Perform key extraction on the TLS session using the specified algorithm_type. C2S and S2C must point to
+ * buffers that provide key_capacity amount of bytes.
  *
  * RETURNS
  *      0 upon success
@@ -87,25 +86,21 @@ const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType);
  *              -2 not enough space in buffer
  *              -3 unkown AEAD
  */
-int NTS_SSL_extract_keys(SSL *, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2c, int key_capacity);
+int NTS_TLS_extract_keys(void *session, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2c, int key_capacity);
 
-/* Setup a SSL object that is connected to hostname:port, ready to begin a TLS handshake.
- * Accepted certificates are loaded using the provided function pointer
- *      (recommended: SSL_CTX_set_default_verify_paths).
- *
- * To use blocking I/O, set the last argument to true.
+/* Setup a ready-to-use TLS session for hostname, on the connected socket, ready to begin a TLS handshake.
  *
  * RETURNS
- *      A pointer to a ready SSL object, NULL upon failure (and then the error is stored in NTS_SSL_error)
+ *      A pointer to a ready-to-use TLS session, NULL upon failure (and then the error is stored in NTS_TLS_error)
  */
-SSL* NTS_SSL_setup(const char *hostname, int port, int load_certs(SSL_CTX *), int blocking);
+void* NTS_TLS_setup(const char *hostname, int socket);
 
-typedef enum NTS_TLSErrorType {
-        NTS_SSL_INTERNAL_ERROR,
-        NTS_SSL_NO_CONNECTION,
-} NTS_TLSErrorType;
-
-extern thread_local enum NTS_TLSErrorType NTS_SSL_error;
+/* Unsetups a TLS session and frees all resources, closes the associated socket
+ *
+ * RETURNS
+ *      Nothing
+ */
+void NTS_TLS_destroy(void *session);
 
 #ifndef memzero
 #define memzero(x,l) (assert(l >= 0), memset(x, 0, l))

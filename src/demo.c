@@ -4,14 +4,19 @@
 
 #include <sys/socket.h>
 
+#ifdef USE_GNUTLS
+#include <gnutls/gnutls.h>
+#else
 #include <openssl/ssl.h>
-#include <openssl/err.h>
+#endif
 
 #include "nts.h"
 #include "nts_extfields.h"
 #include "sntp.h"
 
 uint8_t buffer[65536];
+
+int NTS_attach_socket(const char *host, int port, int type);
 
 int main(int argc, char **argv)
 {
@@ -22,10 +27,21 @@ int main(int argc, char **argv)
         int ntp_port = 123;
         int port = 4460;
 
-        SSL *ssl = NTS_SSL_setup(hostname, port, SSL_CTX_set_default_verify_paths, 1);
-        assert(ssl);
+        int sock = NTS_attach_socket(hostname, port, SOCK_STREAM);
+        assert(sock > 0);
 
-        assert(SSL_connect(ssl) == 1);
+#ifdef USE_GNUTLS
+        gnutls_session_t tls = NTS_TLS_setup(hostname, sock);
+        assert(tls);
+
+        assert(gnutls_handshake(tls) == 0);
+        char *desc = gnutls_session_get_desc(tls);
+        printf("GnuTLS: %s\n", desc);
+        gnutls_free(desc);
+#else
+        SSL *tls = NTS_TLS_setup(hostname, sock);
+	assert(SSL_connect(tls) == 1);
+#endif
 
         uint16_t pref_arr[4] = { 0, }, *prefs = NULL;
         if (argc > 5) {
@@ -52,9 +68,12 @@ int main(int argc, char **argv)
 
         int size = NTS_encode_request(buffer, sizeof(buffer), prefs);
 
-        size_t written, readbytes;
-
-        if (!SSL_write_ex(ssl, buffer, size, &written)) {
+#ifdef USE_GNUTLS
+        if (gnutls_record_send(tls, buffer, size) < size) {
+#else
+        size_t written;
+        if (!SSL_write_ex(tls, buffer, size, &written)) {
+#endif
                 printf("failed to write request\n");
                 goto end;
         }
@@ -65,7 +84,14 @@ int main(int argc, char **argv)
          */
         struct NTS_Query nts;
 
-        while (SSL_read_ex(ssl, buffer, sizeof(buffer), &readbytes)) {
+#ifdef USE_GNUTLS
+        ssize_t readbytes;
+retry:
+        if ((readbytes = gnutls_record_recv(tls, buffer, sizeof(buffer))) > 0) {
+#else
+        size_t readbytes;
+        if (SSL_read_ex(tls, buffer, sizeof(buffer), &readbytes)) {
+#endif
                 struct NTS_Agreement NTS;
                 assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
                 if (NTS.error >= 0) {
@@ -100,11 +126,20 @@ int main(int argc, char **argv)
                         .cookie = *NTS.cookie,
                 };
 
-                assert(NTS_SSL_extract_keys(ssl, NTS.aead_id, c2s, s2c, 64) == 0);
+                assert(NTS_TLS_extract_keys(tls, NTS.aead_id, c2s, s2c, 64) == 0);
+        } else {
+#ifdef USE_GNUTLS
+		if(!gnutls_error_is_fatal(readbytes)) goto retry;
+#endif
+                assert(!"could not read response");
         }
 
-        assert(SSL_get_error(ssl, 0) == SSL_ERROR_ZERO_RETURN);
-        assert(SSL_shutdown(ssl) == 1);
+#ifdef USE_GNUTLS
+        assert(gnutls_bye(tls, GNUTLS_SHUT_RDWR) == 0);
+#else
+        (void)(SSL_read_ex(tls, buffer, sizeof(buffer), &readbytes));
+        assert(SSL_shutdown(tls) == 1);
+#endif
 
         double delay, offset;
         nts_poll(hostname, ntp_port, &nts, &delay, &offset);
@@ -115,11 +150,10 @@ int main(int argc, char **argv)
         printf("roundtrip delay: %f\n", delay);
         printf("offset: %f\n", offset);
 
-        SSL_free(ssl);
+        NTS_TLS_destroy(tls);
         return 0;
 end:
-        ERR_print_errors_fp(stderr);
 
-        SSL_free(ssl);
+        NTS_TLS_destroy(tls);
         return -1;
 }

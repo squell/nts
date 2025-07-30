@@ -7,6 +7,8 @@
 #include "nts_extfields.h"
 #include "nts_crypto.h"
 
+#include <openssl/ssl.h>
+
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 /* it's the callers job to ensure bounds are not transgressed */

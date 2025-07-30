@@ -16,8 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     container: debian:trixie
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-
       - name: install dependencies for all architectures supported by trixie
         run: |
            for arch in i386 s390x arm64 riscv64 armel armhf ppc64el; do 
@@ -25,8 +23,9 @@ jobs:
            done
            apt-get update
            (
-             echo ca-certificates make gcc libc6-dev-i386
-             for foreign in s390x aarch64 riscv64 powerpc64le; do
+             echo binfmt-support qemu-user-static
+             echo ca-certificates make gcc
+             for foreign in i686 s390x aarch64 riscv64 powerpc64le; do
                echo gcc-$foreign-linux-gnu
              done
              echo gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
@@ -35,22 +34,21 @@ jobs:
              done
            ) | xargs apt-get install -y
 
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
       - name: full test on all platform-TLS-crypto combinations
         run: |
+          export CFLAGS='-Wall -Wextra -pedantic -std=gnu11'
           export CC
-          for CC in "gcc -m64"; do
-            #"gcc -m32"
-            #s390x-linux-gnu-gcc
-            #aarch64-linux-gnu-gcc
-            #riscv64-linux-gnu-gcc
-            #arm-linux-gnueabi-gcc
-            #arm-linux-gnueabihf-gcc
-            #powerpc64le-linux-gnu-gcc
+          for CC in \
+            gcc i686-linux-gnu-gcc s390x-linux-gnu-gcc aarch64-linux-gnu-gcc riscv64-linux-gnu-gcc \
+            arm-linux-gnueabi-gcc arm-linux-gnueabihf-gcc powerpc64le-linux-gnu-gcc
+          do
             make -C src clean
             for tls in openssl gnutls; do
             for crypto in openssl nettle; do
               echo "[$CC] $tls+$crypto"
-              make TLS=$tls CRYPTO=$crypto -C src test demo && src/demo time.cloudflare.com | grep -q 'offset'
+              make TLS=$tls CRYPTO=$crypto -C src -B test demo && src/demo time.cloudflare.com | grep -q 'offset'
             done
             done
           done

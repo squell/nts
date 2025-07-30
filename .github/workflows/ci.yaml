@@ -18,26 +18,22 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: install sudo for syntax reasons
-        run: |
-          apt-get update
-          apt-get install -y sudo
-
       - name: install dependencies for all architectures supported by trixie
         run: |
-          #for arch in i386 s390x arm64 riscv64 armel armhf ppc64el; do 
-          #   sudo dpkg --add-architecture $arch
-          # done
-           sudo apt-get update
-           sudo apt-get install -y ca-certificates
-           sudo apt-get install -y make gcc # libc6-dev-i386
-           #for foreign in s390x aarch64 riscv64 powerpc64le; do
-           #  sudo apt-get install -y gcc-$foreign-linux-gnu
-           #done
-           #sudo apt-get install -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
-           for arch in amd64; do # i386 s390x arm64 riscv64 armel armhf ppc64el; do
-             sudo apt-get install -y libssl-dev:$arch libgnutls28-dev:$arch libgcrypt20-dev:$arch
+           for arch in i386 s390x arm64 riscv64 armel armhf ppc64el; do 
+              dpkg --add-architecture $arch
            done
+           apt-get update
+           (
+             echo ca-certificates make gcc libc6-dev-i386
+             for foreign in s390x aarch64 riscv64 powerpc64le; do
+               echo gcc-$foreign-linux-gnu
+             done
+             echo gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
+             for arch in amd64 i386 s390x arm64 riscv64 armel armhf ppc64el; do
+               echo libssl-dev:$arch libgnutls28-dev:$arch libgcrypt20-dev:$arch
+             done
+           ) | xargs apt-get install -y
 
       - name: full test on all platform-TLS-crypto combinations
         run: |

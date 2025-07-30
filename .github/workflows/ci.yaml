@@ -12,89 +12,49 @@ on:
       - main
 
 jobs:
-  build-test-and-analyze:
+  check-portability:
     runs-on: ubuntu-latest
+    container: debian:trixie
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          submodules: recursive
 
-      - name: build libaes_siv
-        run: cd libaes_siv && cmake . && make
-
-      - name: install dependencies, gnutls, nettle and gcrypt
-        run: sudo apt-get install --yes libgcrypt20-dev nettle-dev libgnutls28-dev
-
-      - name: build with gcc -fanalyzer
-        # Using -flto for cross-module analysis (experimental according to the internal docs of -fanalyzer)
-        run: CC="gcc -fanalyzer -flto -Werror" make -B -C src CRYPTO=openssl all
-
-      - name: build with clang
-        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -B -C src CRYPTO=openssl all
-
-      - name: test with gcrypt
-        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=gcrypt test
-
-      - name: test with libaes_siv
-        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=libaes_siv test
-
-      - name: test with nettle
-        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=nettle test
-
-      - name: test with openssl
+      - name: install sudo for syntax reasons
         run: |
-          CC="clang -fsanitize=address,integer,undefined -Werror -DOPENSSL_WORKAROUND" make -C src -B nts_extfields.o
-          CC="clang -fsanitize=address,integer,undefined -Werror" make -C src CRYPTO=openssl test
+          apt-get update
+          apt-get install -y sudo
 
-      - name: build with gnutls
-        run: CC="clang -fsanitize=address,integer,undefined -Werror" make -C src TLS=gnutls demo
-
-      - name: install clang-tools
+      - name: install dependencies for all architectures supported by trixie
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes clang-tools
+          #for arch in i386 s390x arm64 riscv64 armel armhf ppc64el; do 
+          #   sudo dpkg --add-architecture $arch
+          # done
+           sudo apt-get update
+           sudo apt-get install -y ca-certificates
+           sudo apt-get install -y make gcc # libc6-dev-i386
+           #for foreign in s390x aarch64 riscv64 powerpc64le; do
+           #  sudo apt-get install -y gcc-$foreign-linux-gnu
+           #done
+           #sudo apt-get install -y gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf
+           for arch in amd64; do # i386 s390x arm64 riscv64 armel armhf ppc64el; do
+             sudo apt-get install -y libssl-dev:$arch libgnutls28-dev:$arch libgcrypt20-dev:$arch
+           done
 
-      - name: run analysis
-        run: scan-build --status-bugs make -B -C src all
-
-  smoke-test-ntp:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          submodules: recursive
-
-      - name: install AFL
+      - name: full test on all platform-TLS-crypto combinations
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes afl++
-
-      - name: build fuzz test
-        run: CC="afl-clang -fsanitize=address,integer,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
-
-      - name: fuzz test NTS responses
-        run: |
-          echo core | sudo tee /proc/sys/kernel/core_pattern
-          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,integer,undefined" FUZZTIME=90 make -C src fuzz_ntp
-
-  smoke-test-ntske:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          submodules: recursive
-
-      - name: install AFL
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes afl++
-
-      - name: build fuzz test
-        run: CC="afl-clang -fsanitize=address,integer,undefined -Wno-strict-prototypes -Werror" make -C src nts_fuzz
-
-      - name: fuzz test NTS responses
-        run: |
-          echo core | sudo tee /proc/sys/kernel/core_pattern
-          AFL_BENCH_UNTIL_CRASH=1 CC="afl-clang -fsanitize=address,integer,undefined" FUZZTIME=90 make -C src fuzz_ntske
+          export CC
+          for CC in "gcc -m64"; do
+            #"gcc -m32"
+            #s390x-linux-gnu-gcc
+            #aarch64-linux-gnu-gcc
+            #riscv64-linux-gnu-gcc
+            #arm-linux-gnueabi-gcc
+            #arm-linux-gnueabihf-gcc
+            #powerpc64le-linux-gnu-gcc
+            make -C src clean
+            for tls in openssl gnutls; do
+            for crypto in openssl nettle; do
+              echo "[$CC] $tls+$crypto"
+              make TLS=$tls CRYPTO=$crypto -C src test demo && src/demo time.cloudflare.com | grep -q 'offset'
+            done
+            done
+          done

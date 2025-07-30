@@ -1,6 +1,7 @@
 #include "nts_crypto.h"
 
 #include <assert.h>
+#include <string.h>
 #include <nettle/version.h>
 #include <nettle/siv-cmac.h>
 #if NETTLE_VERSION_MAJOR > 3 || NETTLE_VERSION_MAJOR == 3 && NETTLE_VERSION_MINOR >= 9

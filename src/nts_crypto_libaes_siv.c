@@ -1,5 +1,6 @@
 #include "nts_crypto.h"
 
+#include <string.h>
 #include <assert.h>
 #include <aes_siv.h>
 

@@ -22,7 +22,7 @@ int NTS_TLS_extract_keys(
 #ifdef USE_GNUTLS
         gnutls_session_t session = opaque;
 #else
-	SSL *session = opaque;
+        SSL *session = opaque;
 #endif
 
         uint8_t *keys[] = { c2s, s2c };
@@ -58,9 +58,82 @@ int NTS_TLS_extract_keys(
         return 0;
 }
 
-void NTS_TLS_destroy(void *opaque) {
+int NTS_TLS_handshake(void *opaque) {
 #ifdef USE_GNUTLS
         gnutls_session_t session = opaque;
+
+        int result = gnutls_handshake(session);
+        if (result == GNUTLS_E_SUCCESS)
+                return 0;
+        else
+                return gnutls_error_is_fatal(result)? -1 : 1;
+#else
+        SSL *session = opaque;
+
+        int result = SSL_connect(session);
+        if (result == 1)
+                return 0;
+
+        switch (SSL_get_error(session, result)) {
+        case SSL_ERROR_ZERO_RETURN:
+                return 0;
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+                return 1;
+        default:
+                return -1;
+        }
+#endif
+}
+
+ssize_t NTS_TLS_write(void *opaque, const void *buffer, size_t size) {
+#ifdef USE_GNUTLS
+        gnutls_session_t session = opaque;
+        ssize_t result = gnutls_record_send(session, buffer, size);
+        return result > 0? result : -!!gnutls_error_is_fatal(result);
+#else
+        SSL *session = opaque;
+        int result = SSL_write(session, buffer, size);
+        if (result > 0)
+                return result;
+
+        switch (result) {
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+                return 0;
+        default:
+                return -1;
+        }
+#endif
+}
+
+ssize_t NTS_TLS_read(void *opaque, void *buffer, size_t size) {
+#ifdef USE_GNUTLS
+        gnutls_session_t session = opaque;
+        ssize_t result = gnutls_record_recv(session, buffer, size);
+        return result > 0? result : -!!gnutls_error_is_fatal(result);
+#else
+        SSL *session = opaque;
+        int result = SSL_read(session, buffer, size);
+        if (result > 0)
+                return result;
+
+        switch (result) {
+        case SSL_ERROR_WANT_READ:
+        case SSL_ERROR_WANT_WRITE:
+                return 0;
+        default:
+                return -1;
+        }
+#endif
+}
+
+void NTS_TLS_close(void *opaque) {
+#ifdef USE_GNUTLS
+        gnutls_session_t session = opaque;
+
+        /* unidirectional closing is enough */
+        (void) gnutls_bye(session, GNUTLS_SHUT_WR);
 
         void *certs = NULL;
         int r = gnutls_credentials_get(session, GNUTLS_CRD_CERTIFICATE, &certs);
@@ -71,7 +144,11 @@ void NTS_TLS_destroy(void *opaque) {
         gnutls_certificate_free_credentials(certs);
         close(sock);
 #else
-        SSL_free(opaque);
+        SSL *session = opaque;
+
+        /* unidirectional closing is enough */
+        (void) SSL_shutdown(session);
+        SSL_free(session);
 #endif
 }
 
@@ -155,7 +232,7 @@ void* NTS_TLS_setup(
         BIO *bio = BIO_new(BIO_s_socket());
         CHECK(bio);
         BIO_set_fd(bio, socket, BIO_CLOSE);
-	SSL_set_bio(tls, bio, bio);
+        SSL_set_bio(tls, bio, bio);
 
         SSL_CTX_free(ctx);
         return tls;

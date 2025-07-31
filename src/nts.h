@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 /* algorithm type is not made into a full enum since it eases ptr-conversions */
 typedef uint16_t NTS_AEADAlgorithmType;
@@ -95,12 +96,32 @@ int NTS_TLS_extract_keys(void *session, NTS_AEADAlgorithmType, uint8_t *c2s, uin
  */
 void* NTS_TLS_setup(const char *hostname, int socket);
 
-/* Unsetups a TLS session and frees all resources, closes the associated socket
+/* Perform a TLS handshake
+ *
+ * RETURNS
+ *      0 upon success
+ *      1 if it needs to be retried (e.g. if the socket is non-blocking)
+ *     -1 upon permanent failure
+ *
+ */
+int NTS_TLS_handshake(void *session);
+
+/* Shutdowns a TLS session and frees all resources, closes the associated socket
  *
  * RETURNS
  *      Nothing
  */
-void NTS_TLS_destroy(void *session);
+void NTS_TLS_close(void *session);
+
+/* Reading and writing data
+ *
+ * RETURNS
+ *      > 0 the number of bytes processed
+ *      0   an error occurred, please retry
+ *      < 0 an error occurred, do not retry
+ */
+ssize_t NTS_TLS_write(void *session, const void *buffer, size_t size);
+ssize_t NTS_TLS_read(void *session, void *buffer, size_t size);
 
 #ifndef memzero
 #define memzero(x,l) (assert(l >= 0), memset(x, 0, l))

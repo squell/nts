@@ -55,7 +55,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 buflen = NTS_add_extension_fields(&buf, cfg, &unique);
                 assert(buflen > 0);
         }
-        assert(write(sock, buf, buflen) == buflen);
+        assert(write(sock, buf, buflen) == (ssize_t)buflen);
 
         /* read the response */
         ssize_t n = read(sock, &buf, sizeof(buf));

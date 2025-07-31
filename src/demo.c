@@ -6,8 +6,6 @@
 
 #ifdef USE_GNUTLS
 #include <gnutls/gnutls.h>
-#else
-#include <openssl/ssl.h>
 #endif
 
 #include "nts.h"
@@ -30,17 +28,15 @@ int main(int argc, char **argv)
         int sock = NTS_attach_socket(hostname, port, SOCK_STREAM);
         assert(sock > 0);
 
-#ifdef USE_GNUTLS
-        gnutls_session_t tls = NTS_TLS_setup(hostname, sock);
+        void *tls = NTS_TLS_setup(hostname, sock);
         assert(tls);
 
-        assert(gnutls_handshake(tls) == 0);
+        assert(NTS_TLS_handshake(tls) == 0);
+
+#ifdef USE_GNUTLS
         char *desc = gnutls_session_get_desc(tls);
         printf("GnuTLS: %s\n", desc);
         gnutls_free(desc);
-#else
-        SSL *tls = NTS_TLS_setup(hostname, sock);
-	assert(SSL_connect(tls) == 1);
 #endif
 
         uint16_t pref_arr[4] = { 0, }, *prefs = NULL;
@@ -68,12 +64,7 @@ int main(int argc, char **argv)
 
         int size = NTS_encode_request(buffer, sizeof(buffer), prefs);
 
-#ifdef USE_GNUTLS
-        if (gnutls_record_send(tls, buffer, size) < size) {
-#else
-        size_t written;
-        if (!SSL_write_ex(tls, buffer, size, &written)) {
-#endif
+        if (NTS_TLS_write(tls, buffer, size) < size) {
                 printf("failed to write request\n");
                 goto end;
         }
@@ -83,15 +74,10 @@ int main(int argc, char **argv)
          * server closes the connection.
          */
         struct NTS_Query nts;
-
-#ifdef USE_GNUTLS
-        ssize_t readbytes;
-retry:
-        if ((readbytes = gnutls_record_recv(tls, buffer, sizeof(buffer))) > 0) {
-#else
         size_t readbytes;
-        if (SSL_read_ex(tls, buffer, sizeof(buffer), &readbytes)) {
-#endif
+
+retry:
+        if ((readbytes = NTS_TLS_read(tls, buffer, sizeof(buffer))) > 0) {
                 struct NTS_Agreement NTS;
                 assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
                 if (NTS.error >= 0) {
@@ -128,18 +114,11 @@ retry:
 
                 assert(NTS_TLS_extract_keys(tls, NTS.aead_id, c2s, s2c, 64) == 0);
         } else {
-#ifdef USE_GNUTLS
-		if(!gnutls_error_is_fatal(readbytes)) goto retry;
-#endif
+                if (readbytes == 0) goto retry;
                 assert(!"could not read response");
         }
 
-#ifdef USE_GNUTLS
-        assert(gnutls_bye(tls, GNUTLS_SHUT_RDWR) == 0);
-#else
-        (void)(SSL_read_ex(tls, buffer, sizeof(buffer), &readbytes));
-        assert(SSL_shutdown(tls) == 1);
-#endif
+        NTS_TLS_close(tls);
 
         double delay, offset;
         nts_poll(hostname, ntp_port, &nts, &delay, &offset);
@@ -150,10 +129,9 @@ retry:
         printf("roundtrip delay: %f\n", delay);
         printf("offset: %f\n", offset);
 
-        NTS_TLS_destroy(tls);
         return 0;
 end:
 
-        NTS_TLS_destroy(tls);
+        NTS_TLS_close(tls);
         return -1;
 }

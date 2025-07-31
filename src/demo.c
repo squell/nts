@@ -28,13 +28,13 @@ int main(int argc, char **argv)
         int sock = NTS_attach_socket(hostname, port, SOCK_STREAM);
         assert(sock > 0);
 
-        void *tls = NTS_TLS_setup(hostname, sock);
+        NTS_TLS *tls = NTS_TLS_setup(hostname, sock);
         assert(tls);
 
         assert(NTS_TLS_handshake(tls) == 0);
 
 #ifdef USE_GNUTLS
-        char *desc = gnutls_session_get_desc(tls);
+        char *desc = gnutls_session_get_desc((gnutls_session_t)tls);
         printf("GnuTLS: %s\n", desc);
         gnutls_free(desc);
 #endif

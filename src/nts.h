@@ -77,6 +77,9 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
 
 const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType);
 
+/* An opaque type that represents the underlying TLS session */
+typedef struct NTS_TLS NTS_TLS;
+
 /* Perform key extraction on the TLS session using the specified algorithm_type. C2S and S2C must point to
  * buffers that provide key_capacity amount of bytes.
  *
@@ -87,14 +90,14 @@ const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType);
  *              -2 not enough space in buffer
  *              -3 unkown AEAD
  */
-int NTS_TLS_extract_keys(void *session, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2c, int key_capacity);
+int NTS_TLS_extract_keys(NTS_TLS *session, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2c, int key_capacity);
 
 /* Setup a ready-to-use TLS session for hostname, on the connected socket, ready to begin a TLS handshake.
  *
  * RETURNS
  *      A pointer to a ready-to-use TLS session, NULL upon failure (and then the error is stored in NTS_TLS_error)
  */
-void* NTS_TLS_setup(const char *hostname, int socket);
+NTS_TLS* NTS_TLS_setup(const char *hostname, int socket);
 
 /* Perform a TLS handshake
  *
@@ -104,14 +107,14 @@ void* NTS_TLS_setup(const char *hostname, int socket);
  *     -1 upon permanent failure
  *
  */
-int NTS_TLS_handshake(void *session);
+int NTS_TLS_handshake(NTS_TLS *session);
 
 /* Shutdowns a TLS session and frees all resources, closes the associated socket
  *
  * RETURNS
  *      Nothing
  */
-void NTS_TLS_close(void *session);
+void NTS_TLS_close(NTS_TLS *session);
 
 /* Reading and writing data
  *
@@ -120,8 +123,8 @@ void NTS_TLS_close(void *session);
  *      0   an error occurred, please retry
  *      < 0 an error occurred, do not retry
  */
-ssize_t NTS_TLS_write(void *session, const void *buffer, size_t size);
-ssize_t NTS_TLS_read(void *session, void *buffer, size_t size);
+ssize_t NTS_TLS_write(NTS_TLS *session, const void *buffer, size_t size);
+ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size);
 
 #ifndef memzero
 #define memzero(x,l) (assert(l >= 0), memset(x, 0, l))

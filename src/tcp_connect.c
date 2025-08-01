@@ -4,6 +4,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <endian.h>
@@ -39,6 +40,9 @@ int NTS_attach_socket(const char *host, int port, int type) {
                 }
 
                 freeaddrinfo(info);
+
+                int status = 1;
+                setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &status, sizeof(status));
                 return sock;
         }
 

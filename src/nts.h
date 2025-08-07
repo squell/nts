@@ -69,6 +69,9 @@ int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEADAlgorithm
  */
 int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *);
 
+/* Convert a NTS_ErrorType to a string */
+const char *NTS_error_string(enum NTS_ErrorType error);
+
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes
  * - OpenSSL name of the AEAD algorithm
@@ -132,3 +135,11 @@ ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size);
 #ifndef zero
 #define zero(x) (memzero(&(x), sizeof(x)))
 #endif
+
+/* Convenience function for creating a TCP connection
+ *
+ * RETURNS
+ *      >= 0 an opened socket
+ *      < 0  error
+ */
+int NTS_attach_socket(const char *host, int port, int type);

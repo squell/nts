@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
@@ -81,7 +82,7 @@ retry:
                 struct NTS_Agreement NTS;
                 assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
                 if (NTS.error >= 0) {
-                        printf("NTS error: 0x%04X\n", NTS.error);
+                        printf("NTS error: %s\n", NTS_error_string(NTS.error));
                         goto end;
                 }
 

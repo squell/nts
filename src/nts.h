@@ -22,9 +22,9 @@ typedef struct NTS_AEADParam {
 } NTS_AEADParam;
 
 typedef enum NTS_ErrorType {
-        NTS_ERROR_UNKNOWN_CRIT_RECORD = 0,
-        NTS_ERROR_BAD_REQUEST = 1,
-        NTS_ERROR_INTERNAL_SERVER_ERROR = 2,
+        NTS_SERVER_UNKNOWN_CRIT_RECORD = 0,
+        NTS_SERVER_BAD_REQUEST = 1,
+        NTS_SERVER_INTERNAL_ERROR = 2,
 
         NTS_UNEXPECTED_WARNING = 0x10000,
         NTS_BAD_RESPONSE = 0x10001,
@@ -32,6 +32,7 @@ typedef enum NTS_ErrorType {
         NTS_NO_PROTOCOL = 0x10003,
         NTS_NO_AEAD = 0x10004,
         NTS_INSUFFICIENT_DATA = 0x10005,
+        NTS_UNKNOWN_CRIT_RECORD = 0x10006,
 
         NTS_SUCCESS = -1,
 } NTS_ErrorType;
@@ -68,6 +69,9 @@ int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEADAlgorithm
  *      -1 upon failure (writes the error code to NTS_Agreement->error)
  */
 int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *);
+
+/* Convert a NTS_ErrorType to a string */
+const char *NTS_error_string(enum NTS_ErrorType error);
 
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes
@@ -132,3 +136,11 @@ ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size);
 #ifndef zero
 #define zero(x) (memzero(&(x), sizeof(x)))
 #endif
+
+/* Convenience function for creating a TCP connection
+ *
+ * RETURNS
+ *      >= 0 an opened socket
+ *      < 0  error
+ */
+int NTS_attach_socket(const char *host, int port, int type);

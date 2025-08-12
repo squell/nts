@@ -77,12 +77,16 @@ int main(int argc, char **argv)
         struct NTS_Query nts;
         size_t readbytes;
 
+        uint8_t *bufp = buffer;
 retry:
-        if ((readbytes = NTS_TLS_read(tls, buffer, sizeof(buffer))) > 0) {
+        if ((readbytes = NTS_TLS_read(tls, bufp, sizeof(buffer) - (bufp - buffer))) > 0) {
                 struct NTS_Agreement NTS;
-                assert(NTS_decode_response(buffer, readbytes, &NTS) >= 0);
-                if (NTS.error >= 0) {
-                        printf("NTS error: %s\n", NTS_error_string(NTS.error));
+                bufp += readbytes;
+                if (NTS_decode_response(buffer, bufp - buffer, &NTS) < 0) {
+                        printf("NTS error: %s (read: %ld bytes)\n", NTS_error_string(NTS.error), readbytes);
+                        if (NTS.error == NTS_INSUFFICIENT_DATA) {
+                                goto retry;
+                        }
                         goto end;
                 }
 

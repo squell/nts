@@ -63,7 +63,7 @@ struct NTS_Record {
 
 static int32_t NTS_decode_u16(struct NTS_Record *record) {
         if (capacity(&record->body) < 2)
-                return -1;
+                return -NTS_INSUFFICIENT_DATA;
 
         uint16_t result = u16_from_bytes(record->body.data);
         record->body.data += 2;
@@ -73,15 +73,15 @@ static int32_t NTS_decode_u16(struct NTS_Record *record) {
 static int NTS_decode_record(slice *message, struct NTS_Record *record) {
         size_t bytes_remaining = capacity(message);
         if (bytes_remaining < 4)
-                /* not enough byte to decode a header */
-                return -1;
+                /* not enough bytes to decode a header */
+                return -NTS_INSUFFICIENT_DATA;
 
         bool is_critical = message->data[0] >> 7;
 
         uint16_t body_size = u16_from_bytes(message->data + 2);
         if (body_size > bytes_remaining - 4)
                 /* not enough data in the slice to decode this header */
-                return -2;
+                return -NTS_INSUFFICIENT_DATA;
 
         record->type = u16_from_bytes(message->data) & 0x7FFF;
         record->body.data = message->data += 4;
@@ -102,7 +102,7 @@ static int NTS_decode_record(slice *message, struct NTS_Record *record) {
                 break;
         default:
                 if (is_critical)
-                        return -3;
+                        return -NTS_UNKNOWN_CRIT_RECORD;
                 break;
         case NTS_NTPv4Server:
         case NTS_NTPv4Cookie:
@@ -113,7 +113,7 @@ static int NTS_decode_record(slice *message, struct NTS_Record *record) {
 
 error:
         /* there was an inconsistency in the record */
-        return -4;
+        return -NTS_BAD_RESPONSE;
 }
 
 static int NTS_encode_record_u16(
@@ -125,7 +125,7 @@ static int NTS_encode_record_u16(
         size_t bytes_remaining = capacity(message);
         if (num_words >= 0x8000 || bytes_remaining < 4 + num_words*2)
                 /* not enough space */
-                return -1;
+                return -NTS_INSUFFICIENT_DATA;
 
         if (critical)
                 type |= 0x8000;
@@ -192,7 +192,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
 
         while (raw_response.data < raw_response.data_end) {
                 int val = NTS_decode_record(&raw_response, &rec);
-                check(val >= 0, NTS_BAD_RESPONSE);
+                check(val >= 0, -val);
                 switch (rec.type) {
                 case NTS_Error:
                         check((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);

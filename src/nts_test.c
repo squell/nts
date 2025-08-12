@@ -110,7 +110,7 @@ void test_nts_decoding(void) {
         encode_record_raw(&p, 0xfe | 0x8000, &value, 2);
         encode_record_raw(&p, 0, NULL, 0);
         assert(NTS_decode_response(buffer, sizeof buffer, &rec) != 0);
-        assert(rec.error == NTS_BAD_RESPONSE);
+        assert(rec.error == NTS_UNKNOWN_CRIT_RECORD);
 
         /* error record */
         encode_record_raw((p = buffer, &p), 1, (value[1] = 0, &value), 2);

@@ -169,19 +169,19 @@ int NTS_parse_extension_fields(
                         slice plain = { plaintext, plaintext + plain_len };
 
                         while (capacity(&plain) >= 4) {
-                                uint16_t type, len;
-                                decode_hdr(&type, &len, plain.data);
-                                check(capacity(&plain) >= len);
-                                check(len >= 4);
+                                uint16_t inner_type, inner_len;
+                                decode_hdr(&inner_type, &inner_len, plain.data);
+                                check(capacity(&plain) >= inner_len);
+                                check(inner_len >= 4);
 
                                 /* only care about cookies */
-                                switch (type) {
+                                switch (inner_type) {
                                 case Cookie:
                                         fields->new_cookie.data = plain.data + 4;
-                                        fields->new_cookie.length = len - 4;
+                                        fields->new_cookie.length = inner_len - 4;
                                         break;
                                 default:
-                                        plain.data += len;
+                                        plain.data += inner_len;
                                         continue;
                                 }
 

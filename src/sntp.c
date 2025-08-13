@@ -75,10 +75,10 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 assert(NTS_parse_extension_fields(&buf, n, cfg, &rcpt));
                 assert(rcpt.identifier);
                 assert(memcmp(rcpt.identifier, unique, 32) == 0);
-                assert(rcpt.new_cookie.data);
-                assert(rcpt.new_cookie.length <= cfg->cookie.length);
-                memcpy(cfg->cookie.data, rcpt.new_cookie.data, rcpt.new_cookie.length);
-                cfg->cookie.length = rcpt.new_cookie.length;
+                assert(rcpt.new_cookie->data);
+                assert(rcpt.new_cookie->length <= cfg->cookie.length);
+                memcpy(cfg->cookie.data, rcpt.new_cookie->data, rcpt.new_cookie->length);
+                cfg->cookie.length = rcpt.new_cookie->length;
         }
 
         /* perform the calculation */

@@ -169,7 +169,7 @@ void test_ntp_field_encoding(void) {
         assert(len > 48);
         assert(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
-        assert(rcpt.new_cookie.data == NULL);
+        assert(rcpt.new_cookie->data == NULL);
         assert(memcmp(buffer + 48 + 36 + 4, cookie, strlen(cookie)) == 0);
         assert(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
 
@@ -190,7 +190,7 @@ void add_encrypted_server_hdr(
                 uint8_t *buffer,
                 uint8_t **p_ptr,
                 struct NTS_Query nts,
-                const char *cookie,
+                const char *cookie[],
                 uint8_t *corrupt) {
 
         uint8_t *af = *p_ptr;
@@ -199,7 +199,8 @@ void add_encrypted_server_hdr(
         *p_ptr = pt = (uint8_t*)mempcpy(af+8, "123NONCE", 8) + 16;
         /* write fields */
         encode_record_raw_ext(p_ptr, 0x0104, "A sharp mind cuts through deceit", 32);
-        encode_record_raw_ext(p_ptr, 0x0204, cookie, strlen(cookie));
+        for ( ; *cookie; cookie++)
+                encode_record_raw_ext(p_ptr, 0x0204, *cookie, strlen(*cookie));
 
         /* corrupt a byte */
         if (corrupt) *corrupt = 0xee;
@@ -232,7 +233,7 @@ void add_encrypted_server_hdr(
 static void test_ntp_field_decoding(void) {
         uint8_t buffer[1280];
 
-        char cookie[] = "COOKIE";
+        char cookie[] = "COOKIE", cakey[] = "CAKEY";
         uint8_t key[32] = { 0, };
 
         struct NTS_Query nts = {
@@ -248,19 +249,23 @@ static void test_ntp_field_decoding(void) {
 
         /* this deliberately breaks padding rules and sneaks an encrypted identifier */
         encode_record_raw_ext(&p, 0x0104, ident, 32);
-        add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
+        add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, cakey, NULL}, NULL);
 
         struct NTS_Receipt rcpt = { 0, };
         assert(NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
 
         assert(memcmp(rcpt.identifier, ident, 32) == 0);
-        assert(rcpt.new_cookie.data != NULL);
-        assert(rcpt.new_cookie.length >= strlen(cookie));
-        assert(memcmp(rcpt.new_cookie.data, cookie, strlen(cookie)) == 0);
+        assert(rcpt.new_cookie[0].data != NULL);
+        assert(rcpt.new_cookie[0].length >= strlen(cookie));
+        assert(memcmp(rcpt.new_cookie[0].data, cookie, strlen(cookie)) == 0);
+        assert(rcpt.new_cookie[1].data != NULL);
+        assert(rcpt.new_cookie[1].length >= strlen(cakey));
+        assert(memcmp(rcpt.new_cookie[1].data, cakey, strlen(cakey)) == 0);
+        assert(rcpt.new_cookie[2].data == NULL);
 
         /* same test but no authentication of uniq id */
         p = buffer + 48;
-        add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
+        add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, NULL}, NULL);
         encode_record_raw_ext(&p, 0x0104, ident, 32);
 
         zero(rcpt);
@@ -275,7 +280,7 @@ static void test_ntp_field_decoding(void) {
         /* malicious unencrypted field */
         p = buffer + 48;
         encode_record_raw_ext(&p, 0x0104, ident, 32);
-        add_encrypted_server_hdr(buffer, &p, nts, cookie, NULL);
+        add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, NULL}, NULL);
         buffer[48+2] = 0xee;
         zero(rcpt);
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));
@@ -285,7 +290,7 @@ static void test_ntp_field_decoding(void) {
         encode_record_raw_ext(&p, 0x0104, ident, 32);
         /* at p+32 the first plaintext data will be written
          * so at p+34 is the MSB of the first field length */
-        add_encrypted_server_hdr(buffer, &p, nts, cookie, p+34);
+        add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, NULL}, p+34);
 
         zero(rcpt);
         assert(!NTS_parse_extension_fields(&buffer, p - buffer, &nts, &rcpt));

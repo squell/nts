@@ -44,10 +44,11 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
 }
 
 enum extfields {
-        UniqueIdentifier = 0x0104,
-        Cookie           = 0x0204,
-        AuthEncExtFields = 0x0404,
-        NoOpField        = 0x0200,
+        UniqueIdentifier  = 0x0104,
+        Cookie            = 0x0204,
+        CookiePlaceholder = 0x0304,
+        AuthEncExtFields  = 0x0404,
+        NoOpField         = 0x0200,
 };
 
 #define check(expr) if (expr); else goto exit;
@@ -167,6 +168,8 @@ int NTS_parse_extension_fields(
                         check(plain_len >= 0);
 
                         slice plain = { plaintext, plaintext + plain_len };
+                        unsigned cookies = 0;
+                        zero(fields->new_cookie);
 
                         while (capacity(&plain) >= 4) {
                                 uint16_t inner_type, inner_len;
@@ -177,15 +180,16 @@ int NTS_parse_extension_fields(
                                 /* only care about cookies */
                                 switch (inner_type) {
                                 case Cookie:
-                                        fields->new_cookie.data = plain.data + 4;
-                                        fields->new_cookie.length = inner_len - 4;
-                                        break;
+                                        if(cookies < ELEMS(fields->new_cookie)) {
+                                                fields->new_cookie[cookies].data = plain.data + 4;
+                                                fields->new_cookie[cookies].length = inner_len - 4;
+                                        }
+                                        cookies++;
                                 default:
-                                        plain.data += inner_len;
-                                        continue;
+                                        /* ignore any other field */;
                                 }
 
-                                break;
+                                plain.data += inner_len;
                         }
 
                         /* ignore any further fields after this,

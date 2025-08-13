@@ -6,11 +6,12 @@ typedef struct NTS_Query {
         struct NTS_Cookie cookie;
         const uint8_t *c2s_key, *s2c_key;
         struct NTS_AEADParam cipher;
+        uint8_t extra_cookies;
 } NTS_Query;
 
 typedef struct NTS_Receipt {
         uint8_t (*identifier)[32];
-        struct NTS_Cookie new_cookie;
+        struct NTS_Cookie new_cookie[8];
 } NTS_Receipt;
 
 /* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.

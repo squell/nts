@@ -11,8 +11,6 @@
 /* should we emit the NTS record that forces chrony to be 'compliant' */
 #define CHRONY_WORKAROUND
 
-#define ELEMS(array) (sizeof(array) / sizeof(*array))
-
 enum NTS_RecordType {
         /* critical */
         NTS_EndOfMessage = 0,

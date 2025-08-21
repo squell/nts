@@ -32,7 +32,11 @@ static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16
         if (capacity(buf) < padded_len)
                 return 0;
 
-        memmove(buf->data+4, contents, len);
+        if (contents)
+                memmove(buf->data+4, contents, len);
+        else
+                memzero(buf->data+4, len);
+
         type = htobe16(type);
         memcpy(buf->data, &type, 2);
         len = htobe16(padded_len);
@@ -70,6 +74,12 @@ int NTS_add_extension_fields(
 
         /* write cookie field */
         check(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));
+
+        /* write unencrypted extra cookiefields */
+        uint8_t placeholders = nts->extra_cookies;
+        while (placeholders-- > 0) {
+                check(write_ntp_ext_field(&buf, CookiePlaceholder, NULL, nts->cookie.length, 16));
+        }
 
         /* --- cobble together the extension fields extension field --- */
 

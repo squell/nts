@@ -131,7 +131,7 @@ ssize_t NTS_TLS_write(NTS_TLS *session, const void *buffer, size_t size);
 ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size);
 
 #ifndef memzero
-#define memzero(x,l) (assert(l >= 0), memset(x, 0, l))
+#define memzero(x,l) (memset(x, 0, l))
 #endif
 #ifndef zero
 #define zero(x) (memzero(&(x), sizeof(x)))

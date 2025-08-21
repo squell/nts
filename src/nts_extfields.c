@@ -11,6 +11,10 @@
 #include "nts_extfields.h"
 #include "nts_crypto.h"
 
+#ifndef ENCRYPTED_PLACEHOLDERS
+#define ENCRYPTED_PLACEHOLDERS 0
+#endif
+
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 typedef struct slice {
@@ -55,7 +59,7 @@ enum extfields {
         NoOpField         = 0x0200,
 };
 
-#define check(expr) if (expr); else goto exit;
+#define check(expr) { if (expr); else goto exit; }
 
 int NTS_add_extension_fields(
                 uint8_t (*dest)[1280],
@@ -76,8 +80,8 @@ int NTS_add_extension_fields(
         check(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));
 
         /* write unencrypted extra cookiefields */
-        uint8_t placeholders = nts->extra_cookies;
-        while (placeholders-- > 0) {
+        int placeholders = nts->extra_cookies;
+        for ( ; placeholders > ENCRYPTED_PLACEHOLDERS; placeholders--) {
                 check(write_ntp_ext_field(&buf, CookiePlaceholder, NULL, nts->cookie.length, 16));
         }
 
@@ -87,7 +91,11 @@ int NTS_add_extension_fields(
         uint8_t const req_nonce_len = nts->cipher.nonce_size;
         uint8_t const nonce_len = req_nonce_len; /* RFC8915 permits < req_nonce_len, but many servers wont like it */
 
+#if ENCRYPTED_PLACEHOLDERS
+        uint8_t EF[1024] = { 0, nonce_len, 0, 0, };
+#else
         uint8_t EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
+#endif
         void *const EF_ciphertext_len = EF+2;
         uint8_t *const EF_nonce = EF+4;
         uint8_t *const EF_payload = EF_nonce + nonce_len;
@@ -103,8 +111,12 @@ int NTS_add_extension_fields(
 #if defined(OPENSSL_WORKAROUND)
         /* bug in OpenSSL: https://github.com/openssl/openssl/issues/26580,
            which means that a ciphertext HAS TO BE PRESENT */
-        check(write_ntp_ext_field(&ptxt, NoOpField, NULL, 0, 0));
+        if (placeholders == 0)
+                check(write_ntp_ext_field(&ptxt, NoOpField, NULL, 0, 0));
 #endif
+        while (placeholders-- > 0) {
+                check(write_ntp_ext_field(&ptxt, CookiePlaceholder, NULL, nts->cookie.length, 0));
+        }
 
         /* generate the nonce */
         getrandom(EF_nonce, nonce_len, 0);

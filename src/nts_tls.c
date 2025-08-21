@@ -97,7 +97,7 @@ ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
         if (result > 0)
                 return result;
 
-        switch (result) {
+        switch (SSL_get_error(session, result)) {
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
                 return 0;
@@ -118,7 +118,7 @@ ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
         if (result > 0)
                 return result;
 
-        switch (result) {
+        switch (SSL_get_error(session, result)) {
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
                 return 0;

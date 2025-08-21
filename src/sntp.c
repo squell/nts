@@ -39,7 +39,7 @@ static uint64_t get_current_ntp_time(void) {
 
 int NTS_attach_socket(const char *host, int port, int type);
 
-void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtrip_delay, double *time_offset) {
+void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtrip_delay, double *time_offset, int *new_cookies) {
         int sock = NTS_attach_socket(host, port, SOCK_DGRAM);
         assert(sock > 0);
 
@@ -77,6 +77,12 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 assert(memcmp(rcpt.identifier, unique, 32) == 0);
                 assert(rcpt.new_cookie->data);
                 assert(rcpt.new_cookie->length <= cfg->cookie.length);
+                if (new_cookies) {
+                        *new_cookies = 0;
+                        while (*new_cookies < 8 && rcpt.new_cookie[*new_cookies].data) {
+                                (*new_cookies)++;
+                        }
+                }
                 memcpy(cfg->cookie.data, rcpt.new_cookie->data, rcpt.new_cookie->length);
                 cfg->cookie.length = rcpt.new_cookie->length;
         }

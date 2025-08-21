@@ -19,7 +19,7 @@ int NTS_attach_socket(const char *host, int port, int type);
 
 int main(int argc, char **argv)
 {
-        const char *hostname = "ptbtime1.ptb.de";
+        const char *hostname = "time.tweede.golf";
         if (argc > 1) {
                 hostname = argv[1];
         }
@@ -115,6 +115,7 @@ retry:
                         .c2s_key = c2s,
                         .s2c_key = s2c,
                         .cookie = *NTS.cookie,
+                        .extra_cookies = 2,
                 };
 
                 assert(NTS_TLS_extract_keys(tls, NTS.aead_id, c2s, s2c, 64) == 0);
@@ -126,11 +127,14 @@ retry:
         NTS_TLS_close(tls);
 
         double delay, offset;
-        nts_poll(hostname, ntp_port, &nts, &delay, &offset);
+        int count;
+        nts_poll(hostname, ntp_port, &nts, &delay, &offset, &count);
         printf("cookie*: ");
         for (size_t i=0; i < nts.cookie.length; i++)
                 printf("%02x", nts.cookie.data[i]);
         printf("\n");
+        assert(count <= nts.extra_cookies+1);
+        printf("fresh cookies: %d%s\n", count, (count<nts.extra_cookies+1)? " (LESS THAN REQUESTED)" : "");
         printf("roundtrip delay: %f\n", delay);
         printf("offset: %f\n", offset);
 

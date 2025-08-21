@@ -75,7 +75,7 @@ int NTS_add_extension_fields(
 
         /* this represents "N_REQ" in the RFC */
         uint8_t const req_nonce_len = nts->cipher.nonce_size;
-        uint8_t const nonce_len = req_nonce_len;
+        uint8_t const nonce_len = req_nonce_len; /* RFC8915 permits < req_nonce_len, but many servers wont like it */
         uint8_t EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
         assert((nonce_len & 3) == 0);
         assert((req_nonce_len & 3) == 0 && req_nonce_len <= 16);

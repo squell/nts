@@ -86,43 +86,48 @@ int NTS_add_extension_fields(
         /* this represents "N_REQ" in the RFC */
         uint8_t const req_nonce_len = nts->cipher.nonce_size;
         uint8_t const nonce_len = req_nonce_len; /* RFC8915 permits < req_nonce_len, but many servers wont like it */
+
         uint8_t EF[64] = { 0, nonce_len, 0, 0, }; /* 64 bytes are plenty */
+        void *const EF_ciphertext_len = EF+2;
+        uint8_t *const EF_nonce = EF+4;
+        uint8_t *const EF_payload = EF_nonce + nonce_len;
+
         assert((nonce_len & 3) == 0);
         assert((req_nonce_len & 3) == 0 && req_nonce_len <= 16);
 
-#ifdef OPENSSL_WORKAROUND
+        /* re-use the remaining buffer as a temporary scratch area for plaintext;
+           since we are encrypting this and writing it to the buffer, it will be guaranteed
+           to be overwritten */
+        slice ptxt = buf;
+
+#if defined(OPENSSL_WORKAROUND)
         /* bug in OpenSSL: https://github.com/openssl/openssl/issues/26580,
            which means that a ciphertext HAS TO BE PRESENT */
-        uint8_t plain_text[4];
-        slice ptxt = { plain_text, plain_text+sizeof(plain_text) };
-        int ptxt_len = write_ntp_ext_field(&ptxt, NoOpField, plain_text, 0, 0);
-#else
-        /* a dummy pointer -- it has to be non-NULL, but it will not be read from */
-        uint8_t *const plain_text = buf.data;
-        int ptxt_len = 0;
+        check(write_ntp_ext_field(&ptxt, NoOpField, NULL, 0, 0));
 #endif
 
         /* generate the nonce */
-        getrandom(EF+4, nonce_len, 0);
-        uint8_t *EF_payload = EF+4+nonce_len;
+        getrandom(EF_nonce, nonce_len, 0);
 
         AssociatedData info[] = {
                 { *dest, buf.data - *dest },  /* aad */
-                { EF+4,  nonce_len },         /* nonce */
+                { EF_nonce,  nonce_len },     /* nonce */
                 { NULL },
         };
 
+        int ptxt_len = ptxt.data - buf.data;
         assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + nts->cipher.block_size);
 
-        int ctxt_len = NTS_encrypt(EF_payload, plain_text, ptxt_len, info, &nts->cipher, nts->c2s_key);
-        check(ctxt_len >= 0 && ctxt_len <= 0xFFFF);
+        int ctxt_len = NTS_encrypt(EF_payload, buf.data, ptxt_len, info, &nts->cipher, nts->c2s_key);
+        check(ctxt_len >= 0);
+        assert((unsigned)ctxt_len <= sizeof(EF) - (EF_payload - EF)); /* this would be a serious error */
 
         /* add padding if we used a too-short nonce */
         int ef_len = 4 + ctxt_len + nonce_len + (nonce_len < req_nonce_len)*(req_nonce_len - nonce_len);
 
         /* set the ciphertext length */
         uint16_t encoded_len = htobe16(ctxt_len);
-        memcpy(EF+2, &encoded_len, 2);
+        memcpy(EF_ciphertext_len, &encoded_len, 2);
 
         check(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
 

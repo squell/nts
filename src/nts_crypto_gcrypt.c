@@ -11,7 +11,7 @@ static const struct NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_256_GCM_SIV,  256/8, 16, 12, false, true, "AES-256-GCM-SIV" },
 };
 
-const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType id) {
+const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         for (size_t i=0; i < ELEMS(supported_algos); i++)
                 if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];

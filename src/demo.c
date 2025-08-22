@@ -48,7 +48,7 @@ int main(int argc, char **argv)
                 prefs = pref_arr;
                 for (char **arg = argv+2; *arg; arg++) {
                         #define parse(type) if (strstr(#type, *arg)) \
-                                (void) (NTS_GetParam(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type))
+                                (void) (NTS_get_param(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type))
                         if (strnlen(*arg, 3) < 3) continue; else
                         parse(AEAD_AES_SIV_CMAC_256); else
                         parse(AEAD_AES_SIV_CMAC_384); else
@@ -90,8 +90,8 @@ retry:
                         goto end;
                 }
 
-                assert(NTS_GetParam(NTS.aead_id));
-                printf("selected AEAD: %s\n", NTS_GetParam(NTS.aead_id)->cipher_name);
+                assert(NTS_get_param(NTS.aead_id));
+                printf("selected AEAD: %s\n", NTS_get_param(NTS.aead_id)->cipher_name);
 
                 #define FALLBACK(x, y) (x? x : y)
                 hostname = FALLBACK(NTS.ntp_server, hostname);
@@ -111,7 +111,7 @@ retry:
 
                 static uint8_t c2s[64], s2c[64];
                 nts = (struct NTS_Query) {
-                        .cipher = *NTS_GetParam(NTS.aead_id),
+                        .cipher = *NTS_get_param(NTS.aead_id),
                         .c2s_key = c2s,
                         .s2c_key = s2c,
                         .cookie = *NTS.cookie,

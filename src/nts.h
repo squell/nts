@@ -37,6 +37,11 @@ typedef enum NTS_ErrorType {
         NTS_SUCCESS = -1,
 } NTS_ErrorType;
 
+typedef struct NTS_Cookie {
+        uint8_t *data;
+        size_t length;
+} NTS_Cookie;
+
 typedef struct NTS_Agreement {
         enum NTS_ErrorType error;
 
@@ -45,10 +50,7 @@ typedef struct NTS_Agreement {
         const char *ntp_server;
         uint16_t ntp_port;
 
-        struct NTS_Cookie {
-                uint8_t *data;
-                size_t length;
-        } cookie[8];
+        struct NTS_Cookie cookie[8];
 } NTS_Agreement;
 
 /* Encode a NTS KE request in the buffer of the provided size. If the third argument is not NULL,
@@ -79,7 +81,7 @@ const char *NTS_error_string(enum NTS_ErrorType error);
  * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
  */
 
-const struct NTS_AEADParam* NTS_GetParam(NTS_AEADAlgorithmType);
+const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType);
 
 /* An opaque type that represents the underlying TLS session */
 typedef struct NTS_TLS NTS_TLS;

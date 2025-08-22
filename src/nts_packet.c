@@ -147,7 +147,6 @@ int NTS_encode_request(
         const uint16_t proto[] = { NTS_PROTO_NTPv4 };
         const uint16_t aead_default[] = {
                 NTS_AEAD_AES_SIV_CMAC_256,
-                NTS_AEAD_AES_SIV_CMAC_384,
                 NTS_AEAD_AES_SIV_CMAC_512
         }, *aead = aead_default;
 
@@ -227,7 +226,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
                         /* confirm that one of the supported AEAD algo's is offered */
                         check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
                         response->aead_id = val;
-                        check(NTS_GetParam(response->aead_id), NTS_NO_AEAD);
+                        check(NTS_get_param(response->aead_id), NTS_NO_AEAD);
                         break;
 
                 case NTS_NTPv4Cookie:

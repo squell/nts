@@ -59,7 +59,7 @@ enum extfields {
         NoOpField         = 0x0200,
 };
 
-#define check(expr) { if (expr); else goto exit; }
+#define CHECK(expr) { if (expr); else goto exit; }
 
 int NTS_add_extension_fields(
                 uint8_t (*dest)[1280],
@@ -73,16 +73,16 @@ int NTS_add_extension_fields(
 
         /* generate unique identifier */
         uint8_t rand_buf[32], *rand = *(uniq_id? uniq_id : &rand_buf);
-        check(getrandom(rand, sizeof(rand_buf), 0) == sizeof(rand_buf));
-        check(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand_buf), 16));
+        CHECK(getrandom(rand, sizeof(rand_buf), 0) == sizeof(rand_buf));
+        CHECK(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand_buf), 16));
 
         /* write cookie field */
-        check(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));
+        CHECK(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));
 
         /* write unencrypted extra cookiefields */
         int placeholders = nts->extra_cookies;
         for ( ; placeholders > ENCRYPTED_PLACEHOLDERS; placeholders--) {
-                check(write_ntp_ext_field(&buf, CookiePlaceholder, NULL, nts->cookie.length, 16));
+                CHECK(write_ntp_ext_field(&buf, CookiePlaceholder, NULL, nts->cookie.length, 16));
         }
 
         /* --- cobble together the extension fields extension field --- */
@@ -112,14 +112,14 @@ int NTS_add_extension_fields(
         /* bug in OpenSSL: https://github.com/openssl/openssl/issues/26580,
            which means that a ciphertext HAS TO BE PRESENT */
         if (placeholders == 0)
-                check(write_ntp_ext_field(&ptxt, NoOpField, NULL, 0, 0));
+                CHECK(write_ntp_ext_field(&ptxt, NoOpField, NULL, 0, 0));
 #endif
         while (placeholders-- > 0) {
-                check(write_ntp_ext_field(&ptxt, CookiePlaceholder, NULL, nts->cookie.length, 0));
+                CHECK(write_ntp_ext_field(&ptxt, CookiePlaceholder, NULL, nts->cookie.length, 0));
         }
 
         /* generate the nonce */
-        check(getrandom(EF_nonce, nonce_len, 0) == nonce_len);
+        CHECK(getrandom(EF_nonce, nonce_len, 0) == nonce_len);
 
         AssociatedData info[] = {
                 { *dest, buf.data - *dest },  /* aad */
@@ -131,7 +131,7 @@ int NTS_add_extension_fields(
         assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + nts->cipher.block_size);
 
         int ctxt_len = NTS_encrypt(EF_payload, buf.data, ptxt_len, info, &nts->cipher, nts->c2s_key);
-        check(ctxt_len >= 0);
+        CHECK(ctxt_len >= 0);
         assert((unsigned)ctxt_len <= sizeof(EF) - (EF_payload - EF)); /* this would be a serious error */
 
         /* add padding if we used a too-short nonce */
@@ -141,7 +141,7 @@ int NTS_add_extension_fields(
         uint16_t encoded_len = htobe16(ctxt_len);
         memcpy(EF_ciphertext_len, &encoded_len, 2);
 
-        check(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
+        CHECK(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
 
         return buf.data - *dest;
 exit:
@@ -167,19 +167,19 @@ int NTS_parse_extension_fields(
         while (capacity(&buf) >= 4) {
                 uint16_t type, len;
                 decode_hdr(&type, &len, buf.data);
-                check(len >= 4);
-                check(capacity(&buf) >= len);
+                CHECK(len >= 4);
+                CHECK(capacity(&buf) >= len);
 
                 switch (type) {
                 case UniqueIdentifier:
-                        check(len - 4 == 32);
+                        CHECK(len - 4 == 32);
                         fields->identifier = (uint8_t (*)[32])(buf.data + 4);
                         ++processed;
                         break;
                 case AuthEncExtFields: {
                         uint16_t nonce_len, ciph_len;
                         decode_hdr(&nonce_len, &ciph_len, buf.data + 4);
-                        check(nonce_len + ciph_len + 8 <= len);
+                        CHECK(nonce_len + ciph_len + 8 <= len);
                         uint8_t *nonce = buf.data + 8;
                         uint8_t *content = nonce + nonce_len;
 
@@ -192,7 +192,7 @@ int NTS_parse_extension_fields(
                         uint8_t *plaintext = content;
                         int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, &nts->cipher, nts->s2c_key);
                         assert(plain_len < ciph_len);
-                        check(plain_len >= 0);
+                        CHECK(plain_len >= 0);
 
                         slice plain = { plaintext, plaintext + plain_len };
                         unsigned cookies = 0;
@@ -201,8 +201,8 @@ int NTS_parse_extension_fields(
                         while (capacity(&plain) >= 4) {
                                 uint16_t inner_type, inner_len;
                                 decode_hdr(&inner_type, &inner_len, plain.data);
-                                check(capacity(&plain) >= inner_len);
-                                check(inner_len >= 4);
+                                CHECK(capacity(&plain) >= inner_len);
+                                CHECK(inner_len >= 4);
 
                                 /* only care about cookies */
                                 switch (inner_type) {

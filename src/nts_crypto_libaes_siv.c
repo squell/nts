@@ -22,7 +22,7 @@ const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         }
 }
 
-#define check(expr) if (expr); else goto exit;
+#define CHECK(expr) if (expr); else goto exit;
 
 int NTS_encrypt(uint8_t *ctxt,
                 const uint8_t *ptxt,
@@ -35,17 +35,17 @@ int NTS_encrypt(uint8_t *ctxt,
         const int BLKSIZ = 16;
 
         AES_SIV_CTX *state = AES_SIV_CTX_new();
-        check(state);
+        CHECK(state);
 
-        check(AES_SIV_Init(state, key, aead->key_size));
+        CHECK(AES_SIV_Init(state, key, aead->key_size));
 
         /* process the associated data first */
         for ( ; info->data; info++)
-                check(AES_SIV_AssociateData(state, info->data, info->length));
+                CHECK(AES_SIV_AssociateData(state, info->data, info->length));
 
         /* encrypt data and write tag */
         uint8_t tag[16];
-        check(AES_SIV_EncryptFinal(state, tag, ctxt+BLKSIZ, ptxt, ptxt_len));
+        CHECK(AES_SIV_EncryptFinal(state, tag, ctxt+BLKSIZ, ptxt, ptxt_len));
         memcpy(ctxt, tag, BLKSIZ);
 
         result = ptxt_len + BLKSIZ;
@@ -65,21 +65,21 @@ int NTS_decrypt(uint8_t *ptxt,
         const int BLKSIZ = 16;
 
         AES_SIV_CTX *state = AES_SIV_CTX_new();
-        check(state);
-        check(ctxt_len >= BLKSIZ);
+        CHECK(state);
+        CHECK(ctxt_len >= BLKSIZ);
 
-        check(AES_SIV_Init(state, key, aead->key_size));
+        CHECK(AES_SIV_Init(state, key, aead->key_size));
         ctxt += BLKSIZ;
         ctxt_len -= BLKSIZ;
 
         /* process the associated data first */
         for ( ; info->data; info++)
-                check(AES_SIV_AssociateData(state, info->data, info->length));
+                CHECK(AES_SIV_AssociateData(state, info->data, info->length));
 
         /* decrypt data */
         uint8_t tag[16];
         memcpy(tag, ctxt - BLKSIZ, BLKSIZ);
-        check(AES_SIV_DecryptFinal(state, ptxt, tag, ctxt, ctxt_len));
+        CHECK(AES_SIV_DecryptFinal(state, ptxt, tag, ctxt, ctxt_len));
 
         result = ctxt_len;
 exit:

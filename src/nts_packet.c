@@ -180,7 +180,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
         /* make sure the result is only OK if we really succeed */
         *response = (struct NTS_Agreement) { .error = NTS_INTERNAL_CLIENT_ERROR };
 
-        #define check(expr, err) {               \
+        #define CHECK(expr, err) {               \
                 if (expr); else {                 \
                         response->error = (err); \
                         return -1;               \
@@ -189,15 +189,15 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
 
         while (raw_response.data < raw_response.data_end) {
                 int val = NTS_decode_record(&raw_response, &rec);
-                check(val >= 0, -val);
+                CHECK(val >= 0, -val);
                 switch (rec.type) {
                 case NTS_Error:
-                        check((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
+                        CHECK((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
                         response->error = val;
                         return -1;
 
                 case NTS_Warning:
-                        check(NTS_decode_u16(&rec) >= 0, NTS_BAD_RESPONSE);
+                        CHECK(NTS_decode_u16(&rec) >= 0, NTS_BAD_RESPONSE);
                         response->error = NTS_UNEXPECTED_WARNING;
                         return -1;
 
@@ -217,16 +217,16 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
                 case NTS_NextProto:
                         /* confirm that NTPv4 is on offer */
                         do {
-                                check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_PROTOCOL);
+                                CHECK((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_PROTOCOL);
                         } while (val != NTS_PROTO_NTPv4);
                         is_ntp4 = true;
                         break;
 
                 case NTS_AEADAlgorithm:
                         /* confirm that one of the supported AEAD algo's is offered */
-                        check((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
+                        CHECK((val = NTS_decode_u16(&rec)) >= 0, NTS_NO_AEAD);
                         response->aead_id = val;
-                        check(NTS_get_param(response->aead_id), NTS_NO_AEAD);
+                        CHECK(NTS_get_param(response->aead_id), NTS_NO_AEAD);
                         break;
 
                 case NTS_NTPv4Cookie:
@@ -239,17 +239,17 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
                         break;
 
                 case NTS_NTPv4Server:
-                        /* do limited sanity check */
-                        check(capacity(&rec.body) <= 255, NTS_BAD_RESPONSE);
+                        /* do limited sanity CHECK */
+                        CHECK(capacity(&rec.body) <= 255, NTS_BAD_RESPONSE);
                         for (const uint8_t* p = rec.body.data; p != rec.body.data_end; p++)
-                                check(isascii(*p) && isgraph(*p), NTS_BAD_RESPONSE);
+                                CHECK(isascii(*p) && isgraph(*p), NTS_BAD_RESPONSE);
 
                         response->ntp_server  = (char *)rec.body.data;
                         ntp_server_terminator = (char *)rec.body.data_end;
                         break;
 
                 case NTS_NTPv4Port:
-                        check((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
+                        CHECK((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
                         response->ntp_port = val;
                         break;
 
@@ -262,4 +262,4 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
         response->error = NTS_INSUFFICIENT_DATA;
         return -1;
 }
-#undef check
+#undef CHECK

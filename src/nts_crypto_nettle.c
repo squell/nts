@@ -27,7 +27,7 @@ const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         return NULL;
 }
 
-#define check(expr) if (expr == 1); else goto exit;
+#define CHECK(expr) if (expr == 1); else goto exit;
 
 union ctx {
         struct siv_cmac_aes128_ctx siv_cmac128;
@@ -140,7 +140,7 @@ int NTS_decrypt(uint8_t *ptxt,
         case NTS_AEAD_AES_SIV_CMAC_256: {
                 struct siv_cmac_aes128_ctx *state = &ctx_obj.siv_cmac128;
                 siv_cmac_aes128_set_key(state, key);
-                check(siv_cmac_aes128_decrypt_message(
+                CHECK(siv_cmac_aes128_decrypt_message(
                         state,
                         info[1].length, info[1].data,
                         info[0].length, info[0].data,
@@ -152,7 +152,7 @@ int NTS_decrypt(uint8_t *ptxt,
         case NTS_AEAD_AES_SIV_CMAC_512: {
                 struct siv_cmac_aes256_ctx *state = &ctx_obj.siv_cmac256;
                 siv_cmac_aes256_set_key(state, key);
-                check(siv_cmac_aes256_decrypt_message(
+                CHECK(siv_cmac_aes256_decrypt_message(
                         state,
                         info[1].length, info[1].data,
                         info[0].length, info[0].data,
@@ -165,7 +165,7 @@ int NTS_decrypt(uint8_t *ptxt,
         case NTS_AEAD_AES_128_GCM_SIV: {
                 struct aes128_ctx *state = &ctx_obj.aes128;
                 aes128_set_encrypt_key(state, key);
-                check(siv_gcm_aes128_decrypt_message(
+                CHECK(siv_gcm_aes128_decrypt_message(
                         state,
                         info[1].length, info[1].data,
                         info[0].length, info[0].data,
@@ -177,7 +177,7 @@ int NTS_decrypt(uint8_t *ptxt,
         case NTS_AEAD_AES_256_GCM_SIV: {
                 struct aes256_ctx *state = &ctx_obj.aes256;
                 aes256_set_encrypt_key(state, key);
-                check(siv_gcm_aes256_decrypt_message(
+                CHECK(siv_gcm_aes256_decrypt_message(
                         state,
                         info[1].length, info[1].data,
                         info[0].length, info[0].data,

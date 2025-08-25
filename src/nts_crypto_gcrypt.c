@@ -19,7 +19,7 @@ const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         return NULL;
 }
 
-#define check(expr) if (expr); else goto exit;
+#define CHECK(expr) if (expr); else goto exit;
 
 static int process_assoc_data(
         gcry_cipher_hd_t handle,
@@ -34,12 +34,12 @@ static int process_assoc_data(
                 for (last = info; (last+1)->data != NULL; )
                         last++;
 
-                check(last->length == aead->nonce_size);
-                check(gcry_cipher_setiv(handle, last->data, last->length) == GPG_ERR_NO_ERROR);
+                CHECK(last->length == aead->nonce_size);
+                CHECK(gcry_cipher_setiv(handle, last->data, last->length) == GPG_ERR_NO_ERROR);
         }
 
         for ( ; info->data && info != last; info++)
-                check(gcry_cipher_authenticate(handle, info->data, info->length) == GPG_ERR_NO_ERROR);
+                CHECK(gcry_cipher_authenticate(handle, info->data, info->length) == GPG_ERR_NO_ERROR);
 
         return 1;
 exit:
@@ -70,10 +70,10 @@ int NTS_encrypt(uint8_t *ctxt,
         int result = -1;
 
         gcry_cipher_hd_t handle;
-        check(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
 
-        check(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
-        check(process_assoc_data(handle, info, aead));
+        CHECK(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
+        CHECK(process_assoc_data(handle, info, aead));
 
         uint8_t *tag;
         if (aead->tag_first) {
@@ -82,9 +82,9 @@ int NTS_encrypt(uint8_t *ctxt,
         } else
                 tag = ctxt + ptxt_len;
 
-        check(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
-        check(gcry_cipher_encrypt(handle, ctxt, ptxt_len+aead->block_size, ptxt, ptxt_len) == GPG_ERR_NO_ERROR);
-        check(gcry_cipher_gettag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_encrypt(handle, ctxt, ptxt_len+aead->block_size, ptxt, ptxt_len) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_gettag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);
 
         result = ptxt_len + aead->block_size;
 exit:
@@ -102,11 +102,11 @@ int NTS_decrypt(uint8_t *ptxt,
         int result = -1;
 
         gcry_cipher_hd_t handle;
-        check(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
-        check(ctxt_len >= aead->block_size);
+        CHECK(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
+        CHECK(ctxt_len >= aead->block_size);
 
-        check(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
-        check(process_assoc_data(handle, info, aead));
+        CHECK(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
+        CHECK(process_assoc_data(handle, info, aead));
 
         const uint8_t *tag;
         if (aead->tag_first) {
@@ -117,9 +117,9 @@ int NTS_decrypt(uint8_t *ptxt,
 
         ctxt_len -= aead->block_size;
 
-        check(gcry_cipher_set_decryption_tag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);
-        check(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
-        check(gcry_cipher_decrypt(handle, ptxt, ctxt_len, ctxt, ctxt_len) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_set_decryption_tag(handle, tag, aead->block_size) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_final(handle) == GPG_ERR_NO_ERROR);
+        CHECK(gcry_cipher_decrypt(handle, ptxt, ctxt_len, ctxt, ctxt_len) == GPG_ERR_NO_ERROR);
 
         result = ctxt_len;
 exit:

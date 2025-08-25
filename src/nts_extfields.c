@@ -73,7 +73,7 @@ int NTS_add_extension_fields(
 
         /* generate unique identifier */
         uint8_t rand_buf[32], *rand = *(uniq_id? uniq_id : &rand_buf);
-        getrandom(rand, sizeof(rand_buf), 0);
+        check(getrandom(rand, sizeof(rand_buf), 0) == sizeof(rand_buf));
         check(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand_buf), 16));
 
         /* write cookie field */
@@ -119,7 +119,7 @@ int NTS_add_extension_fields(
         }
 
         /* generate the nonce */
-        getrandom(EF_nonce, nonce_len, 0);
+        check(getrandom(EF_nonce, nonce_len, 0) == nonce_len);
 
         AssociatedData info[] = {
                 { *dest, buf.data - *dest },  /* aad */

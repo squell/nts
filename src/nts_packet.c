@@ -32,13 +32,13 @@ enum NTS_ProtocolType {
         NTS_PROTO_NTPv4 = 0,
 };
 
-typedef struct slice {
+typedef struct {
         uint8_t *data;
         uint8_t *data_end;
 } slice;
 
-static size_t capacity(const slice *slice) {
-        return slice->data_end - slice->data;
+static size_t capacity(const slice *p) {
+        return p->data_end - p->data;
 }
 
 /* does not check bounds */

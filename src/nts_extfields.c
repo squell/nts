@@ -17,13 +17,13 @@
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
-typedef struct slice {
+typedef struct {
         uint8_t *data;
         uint8_t *data_end;
 } slice;
 
-static size_t capacity(const slice *slice) {
-        return slice->data_end - slice->data;
+static size_t capacity(const slice *p) {
+        return p->data_end - p->data;
 }
 
 static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16_t len, uint16_t size) {

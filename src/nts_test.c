@@ -10,6 +10,7 @@
 #include <openssl/ssl.h>
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wshadow"
 
 /* it's the callers job to ensure bounds are not transgressed */
 #define encode_record_raw(msg, type, data, len) encode_ptr_len_data(msg, type, data, len, 0)

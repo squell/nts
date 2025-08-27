@@ -31,7 +31,7 @@ demo: demo_$(TLS).o nts_packet.o nts_$(TLS).o nts_error.o sntp.o nts_extfields.o
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
 
-nts_test: nts_packet.o nts_extfields.o nts_test.o nts_crypto_$(CRYPTO).o
+nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o
 	$(CC) $+ $(LINK) -lcrypto -o $@
 
 nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
@@ -78,6 +78,7 @@ nts_error.o: nts.h nts_error.c
 nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
 nts_fuzz.o: nts_fuzz.c nts.h nts_crypto.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
-nts_test.o: nts_test.c nts.h nts_extfields.h nts_crypto.h
+test-nts.o: test-nts.c nts.h nts_extfields.h nts_crypto.h
+	$(CC) $(CFLAGS) -DNTS_STANDALONE_TEST -o $@ -c $<
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

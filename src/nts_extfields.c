@@ -207,7 +207,7 @@ int NTS_parse_extension_fields(
                                 /* only care about cookies */
                                 switch (inner_type) {
                                 case Cookie:
-                                        if(cookies < ELEMS(fields->new_cookie)) {
+                                        if(cookies < ELEMENTSOF(fields->new_cookie)) {
                                                 fields->new_cookie[cookies].data = plain.data + 4;
                                                 fields->new_cookie[cookies].length = inner_len - 4;
                                         }

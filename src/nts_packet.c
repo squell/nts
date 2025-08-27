@@ -150,7 +150,7 @@ int NTS_encode_request(
                 NTS_AEAD_AES_SIV_CMAC_512
         }, *aead = aead_default;
 
-        size_t aead_len = ELEMS(aead_default);
+        size_t aead_len = ELEMENTSOF(aead_default);
         if (preferred_crypto) {
                 aead = preferred_crypto;
                 for (aead_len = 0; preferred_crypto[aead_len] ; )
@@ -158,7 +158,7 @@ int NTS_encode_request(
         }
 
         int result;
-        result  = NTS_encode_record_u16(&request, true, NTS_NextProto, proto, ELEMS(proto));
+        result  = NTS_encode_record_u16(&request, true, NTS_NextProto, proto, ELEMENTSOF(proto));
         result += NTS_encode_record_u16(&request, true, NTS_AEADAlgorithm, aead, aead_len);
 #ifdef CHRONY_WORKAROUND
         result += NTS_encode_record_u16(&request, false, NTS_Chrony_BugWorkaround, NULL, 0);

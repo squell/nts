@@ -406,7 +406,11 @@ void test_crypto(void) {
         }
 }
 
-int main(void) {
+#ifndef TEST_NAME
+#define TEST_NAME main
+#endif
+
+int TEST_NAME(void) {
         test_crypto();
         test_nts_encoding();
         test_nts_decoding();

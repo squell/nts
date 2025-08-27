@@ -139,7 +139,9 @@ ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size);
 #define zero(x) (memzero(&(x), sizeof(x)))
 #endif
 
-#define ELEMS(array) (sizeof(array) / sizeof(*array))
+#ifndef ELEMENTSOF
+#define ELEMENTSOF(array) (sizeof(array) / sizeof(*array))
+#endif
 
 /* Convenience function for creating a TCP connection
  *

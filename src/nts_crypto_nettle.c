@@ -7,7 +7,7 @@
 #if NETTLE_VERSION_MAJOR > 3 || NETTLE_VERSION_MAJOR == 3 && NETTLE_VERSION_MINOR >= 9
 #  include <nettle/siv-gcm.h>
 #elif NETTLE_VERSION_MAJOR == 3 && NETTLE_VERSION_MINOR < 8
-#  error Your Nettle version is too old.
+#  error Your Nettle version is too old, need at least version 3.8
 #endif
 
 static const struct NTS_AEADParam supported_algos[] = {

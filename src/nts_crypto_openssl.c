@@ -3,6 +3,10 @@
 #include <assert.h>
 #include <openssl/ssl.h>
 
+#if !OPENSSL_VERSION_PREREQ(3,0)
+#    error Your OpenSSL version does not support SIV modes, need at least version 3.0.
+#endif
+
 #if defined(OPENSSL_WORKAROUND) && OPENSSL_VERSION_PREREQ(3,5)
 #    warning The OpenSSL workaround is not necessary.
 #endif

@@ -1,4 +1,7 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #include <assert.h>
+
 #include "nts.h"
 
 #define ERROR(kind) case kind: return &#kind[4]
@@ -18,8 +21,10 @@ const char *NTS_error_string(enum NTS_ErrorType error) {
                 ERROR(NTS_UNKNOWN_CRIT_RECORD);
         case NTS_SUCCESS:
                 return "Success?";
+        default:
+                assert(!"Invalid error code");
         }
 
-        /* this is unreachable code */
-        assert(!"Unknown error");
+        __builtin_unreachable();
+        return NULL;
 }

@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
                 }
         } else {
                 struct NTS_Receipt rcpt = { 0, };
-                if (NTS_parse_extension_fields(&buffer, len, &nts, &rcpt)) {
+                if (NTS_parse_extension_fields(buffer, len, &nts, &rcpt)) {
                         for (int i = 0; i < 8; i++)
                                 eat(rcpt.new_cookie[i].data, rcpt.new_cookie[i].length);
                         eat(*rcpt.identifier, 32);

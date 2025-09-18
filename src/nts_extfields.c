@@ -1,21 +1,21 @@
-#include <sys/types.h>
-#include <sys/random.h>
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #include <arpa/inet.h>
 #include <assert.h>
-#include <stdlib.h>
+#include <endian.h>
+#include <sys/random.h>
+#include <sys/types.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
-#include <endian.h>
 
-#include "nts_extfields.h"
 #include "nts_crypto.h"
+#include "nts_extfields.h"
 
 #ifndef ENCRYPTED_PLACEHOLDERS
 #define ENCRYPTED_PLACEHOLDERS 0
 #endif
-
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 
 typedef struct {
         uint8_t *data;
@@ -27,6 +27,8 @@ static size_t capacity(const slice *p) {
 }
 
 static int write_ntp_ext_field(slice *buf, uint16_t type, void *contents, uint16_t len, uint16_t size) {
+        assert(buf);
+
         /* enforce minimum size */
         if (size < len+4) size = len+4;
         /* pad to a dword boundary */
@@ -62,11 +64,14 @@ enum extfields {
 #define CHECK(expr) { if (expr); else goto exit; }
 
 int NTS_add_extension_fields(
-                uint8_t (*dest)[1280],
+                uint8_t dest[static 1280],
                 const struct NTS_Query *nts,
                 uint8_t (*uniq_id)[32]) {
 
-        slice buf = { *dest, *dest + 1280 };
+        assert(dest);
+        assert(nts);
+
+        slice buf = { dest, dest + 1280 };
 
         /* skip beyond regular ntp portion */
         buf.data += 48;
@@ -122,18 +127,18 @@ int NTS_add_extension_fields(
         CHECK(getrandom(EF_nonce, nonce_len, 0) == nonce_len);
 
         AssociatedData info[] = {
-                { *dest, buf.data - *dest },  /* aad */
-                { EF_nonce,  nonce_len },     /* nonce */
-                { NULL },
+                { dest, buf.data - dest },  /* aad */
+                { EF_nonce,  nonce_len },   /* nonce */
+                { },
         };
 
         int ptxt_len = ptxt.data - buf.data;
         assert((int)sizeof(EF) - (EF_payload - EF) >= ptxt_len + nts->cipher.block_size);
 
         int EF_capacity = sizeof(EF) - (EF_payload - EF);
-        int ctxt_len = NTS_encrypt(EF_payload, buf.data, ptxt_len, info, &nts->cipher, nts->c2s_key);
+        int ctxt_len = NTS_encrypt(EF_payload, EF_capacity, buf.data, ptxt_len, info, &nts->cipher, nts->c2s_key);
         CHECK(ctxt_len >= 0);
-        assert(ctxt_len <= EF_capacity); /* this would be a serious error */
+        assert(ctxt_len <= EF_capacity); /* failing this would be a serious error */
 
         /* add padding if we used a too-short nonce */
         int ef_len = 4 + ctxt_len + nonce_len + (nonce_len < req_nonce_len)*(req_nonce_len - nonce_len);
@@ -144,7 +149,7 @@ int NTS_add_extension_fields(
 
         CHECK(write_ntp_ext_field(&buf, AuthEncExtFields, EF, ef_len, 28));
 
-        return buf.data - *dest;
+        return buf.data - dest;
 exit:
         return 0;
 }
@@ -156,13 +161,17 @@ static void decode_hdr(uint16_t *restrict a, uint16_t *restrict b, uint8_t *byte
 }
 
 int NTS_parse_extension_fields(
-                uint8_t (*src)[1280],
+                uint8_t src[static 1280],
                 size_t src_len,
                 const struct NTS_Query *nts,
                 struct NTS_Receipt *fields) {
 
-        assert(src_len >= 48 && src_len <= sizeof(*src));
-        slice buf = { *src + 48, *src + src_len };
+        assert(src);
+        assert(src_len >= 48 && src_len <= 1280);
+        assert(nts);
+        assert(fields);
+
+        slice buf = { src + 48, src + src_len };
         int processed = 0;
 
         while (capacity(&buf) >= 4) {
@@ -185,13 +194,13 @@ int NTS_parse_extension_fields(
                         uint8_t *content = nonce + nonce_len;
 
                         AssociatedData info[] = {
-                                { *src, buf.data - *src }, /* aad */
-                                { nonce, nonce_len },      /* nonce */
-                                { NULL },
+                                { src, buf.data - src }, /* aad */
+                                { nonce, nonce_len },    /* nonce */
+                                { },
                         };
 
                         uint8_t *plaintext = content;
-                        int plain_len = NTS_decrypt(plaintext, content, ciph_len, info, &nts->cipher, nts->s2c_key);
+                        int plain_len = NTS_decrypt(plaintext, ciph_len, content, ciph_len, info, &nts->cipher, nts->s2c_key);
                         assert(plain_len < ciph_len);
                         CHECK(plain_len >= 0);
 

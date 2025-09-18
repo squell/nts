@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
 #pragma once
 
 #include "nts.h"
@@ -16,6 +17,7 @@ typedef struct AssociatedData {
  * RETURNS: the number of bytes in the ciphertext (< 0 indicates an error)
  */
 int NTS_encrypt(uint8_t *ctxt,
+                int ctxt_len,
                 const uint8_t *ptxt,
                 int ptxt_len,
                 const AssociatedData *,
@@ -32,6 +34,7 @@ int NTS_encrypt(uint8_t *ctxt,
  * RETURNS: the number of bytes in the decrypted plaintext (< 0 indicates an error)
  */
 int NTS_decrypt(uint8_t *ptxt,
+                int ptxt_len,
                 const uint8_t *ctxt,
                 int ctxt_len,
                 const AssociatedData *,

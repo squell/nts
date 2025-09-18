@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #include <assert.h>
 #include "nts.h"
 
@@ -22,4 +24,5 @@ const char *NTS_error_string(enum NTS_ErrorType error) {
 
         /* this is unreachable code */
         assert(!"Unknown error");
+        return NULL;
 }

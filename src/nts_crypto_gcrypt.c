@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #include "nts_crypto.h"
 
 #include <assert.h>
@@ -6,8 +8,6 @@
 #if GCRYPT_VERSION_NUMBER < 0x010A00
 #    error Your gcrypt version is too old, need at least version 1.10
 #endif
-
-int x = GCRYPT_VERSION_NUMBER; // GCRYPT_VERSION_NUMBER
 
 static const struct NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
@@ -64,6 +64,8 @@ static int gcrypt_mode(const struct NTS_AEADParam *aead) {
         default:
                 assert(!"unreachable");
         }
+        /* this is never reached */
+        return -1;
 }
 
 int NTS_encrypt(uint8_t *ctxt,

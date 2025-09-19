@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -19,6 +21,10 @@ int NTS_TLS_extract_keys(
                 uint8_t *s2c,
                 int key_capacity) {
 
+        assert(opaque);
+        assert(c2s);
+        assert(s2c);
+
 #ifdef USE_GNUTLS
         gnutls_session_t session = (void *)opaque;
 #else
@@ -26,7 +32,7 @@ int NTS_TLS_extract_keys(
 #endif
 
         uint8_t *keys[] = { c2s, s2c };
-        const char label[30] = { "EXPORTER-network-time-security" }; /* note: this does not include the zero byte */
+        const char label[] = "EXPORTER-network-time-security";
 
         const struct NTS_AEADParam *info = NTS_get_param(aead);
         if (!info)
@@ -35,12 +41,12 @@ int NTS_TLS_extract_keys(
                 return -2;
 
         for (int i=0; i < 2; i++) {
-                const char context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
+                const uint8_t context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
 #ifdef USE_GNUTLS
                 if (gnutls_prf_rfc5705(
                                         session,
-                                        sizeof(label), label,
-                                        sizeof(context), context,
+                                        strlen(label), label,
+                                        sizeof(context), (const char*)context,
                                         info->key_size,
                                         (char *)keys[i]
                                 ) != GNUTLS_E_SUCCESS)
@@ -48,8 +54,8 @@ int NTS_TLS_extract_keys(
                 if (SSL_export_keying_material(
                                         session,
                                         keys[i], info->key_size,
-                                        label, sizeof label,
-                                        (uint8_t *)context, sizeof context, 1)
+                                        label, strlen(label),
+                                        context, sizeof context, 1)
                                 != 1)
 #endif
                         return -1;
@@ -59,6 +65,7 @@ int NTS_TLS_extract_keys(
 }
 
 int NTS_TLS_handshake(NTS_TLS *opaque) {
+        assert(opaque);
 #ifdef USE_GNUTLS
         gnutls_session_t session = (void *)opaque;
 
@@ -87,6 +94,9 @@ int NTS_TLS_handshake(NTS_TLS *opaque) {
 }
 
 ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
+        assert(opaque);
+        assert(buffer);
+
 #ifdef USE_GNUTLS
         gnutls_session_t session = (void *)opaque;
         ssize_t result = gnutls_record_send(session, buffer, size);
@@ -108,6 +118,9 @@ ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
 }
 
 ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
+        assert(opaque);
+        assert(buffer);
+
 #ifdef USE_GNUTLS
         gnutls_session_t session = (void *)opaque;
         ssize_t result = gnutls_record_recv(session, buffer, size);
@@ -129,6 +142,8 @@ ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
 }
 
 void NTS_TLS_close(NTS_TLS *opaque) {
+        assert(opaque);
+
 #ifdef USE_GNUTLS
         gnutls_session_t session = (void *)opaque;
 
@@ -138,6 +153,7 @@ void NTS_TLS_close(NTS_TLS *opaque) {
         void *certs = NULL;
         int r = gnutls_credentials_get(session, GNUTLS_CRD_CERTIFICATE, &certs);
         assert(r == GNUTLS_E_SUCCESS);
+        (void) r;
 
         int sock = gnutls_transport_get_int(session);
         gnutls_deinit(session);
@@ -161,6 +177,8 @@ NTS_TLS* NTS_TLS_setup(
                 const char *hostname,
                 int socket) {
 
+        assert(hostname);
+
         gnutls_certificate_credentials_t certs = NULL;
         gnutls_session_t tls = NULL;
         CHECK(gnutls_certificate_allocate_credentials(&certs) == GNUTLS_E_SUCCESS);
@@ -179,11 +197,11 @@ NTS_TLS* NTS_TLS_setup(
 
         CHECK(gnutls_server_name_set(tls, GNUTLS_NAME_DNS, hostname, strlen(hostname)) == GNUTLS_E_SUCCESS);
 
-        unsigned char alpn[7] = "ntske/1";
+        unsigned char alpn[] = "ntske/1";
         CHECK(
                 gnutls_alpn_set_protocols(
                         tls,
-                        &(gnutls_datum_t){ .data = alpn, .size = sizeof(alpn) },
+                        &(gnutls_datum_t){ .data = alpn, .size = strlen((char*)alpn) },
                         1,
                         GNUTLS_ALPN_MANDATORY
                 ) == GNUTLS_E_SUCCESS
@@ -209,6 +227,8 @@ NTS_TLS* NTS_TLS_setup(
                 const char *hostname,
                 int socket) {
 
+        assert(hostname);
+
         SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
         CHECK(ctx);
         #undef CLEANUP
@@ -226,8 +246,8 @@ NTS_TLS* NTS_TLS_setup(
         CHECK(SSL_set1_host(tls, hostname) == 1);
         CHECK(SSL_set_tlsext_host_name(tls, hostname) == 1);
 
-        unsigned char alpn[8] = "\x07ntske/1";
-        CHECK(SSL_set_alpn_protos(tls, alpn, sizeof(alpn)) == 0);
+        unsigned char alpn[] = "\x07ntske/1";
+        CHECK(SSL_set_alpn_protos(tls, alpn, strlen((char*)alpn)) == 0);
 
         BIO *bio = BIO_new(BIO_s_socket());
         CHECK(bio);

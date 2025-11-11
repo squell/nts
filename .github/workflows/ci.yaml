@@ -23,7 +23,9 @@ jobs:
         run: cd libaes_siv && cmake . && make
 
       - name: install dependencies, gnutls, nettle and gcrypt
-        run: sudo apt-get install --yes libgcrypt20-dev nettle-dev libgnutls28-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libgcrypt20-dev nettle-dev libgnutls28-dev
 
       - name: build with gcc -fanalyzer
         # Using -flto for cross-module analysis (experimental according to the internal docs of -fanalyzer)

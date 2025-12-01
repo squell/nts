@@ -68,7 +68,7 @@ int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEADAlgorithm
  *
  * RETURNS
  *      0 upon success
- *      -1 upon failure (writes the error code to NTS_Agreement->error)
+ *      negative upon failure (writes the error code to NTS_Agreement->error)
  */
 int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *);
 
@@ -92,9 +92,9 @@ typedef struct NTS_TLS NTS_TLS;
  * RETURNS
  *      0 upon success
  *      a negative value upon failure:
- *              -1 OpenSSL error
- *              -2 not enough space in buffer
- *              -3 unkown AEAD
+ *              -EBADE   OpenSSL error
+ *              -ENOBUFS not enough space in buffer
+ *              -EINVAL  unkown AEAD
  */
 int NTS_TLS_extract_keys(NTS_TLS *session, NTS_AEADAlgorithmType, uint8_t *c2s, uint8_t *s2c, int key_capacity);
 
@@ -108,9 +108,9 @@ NTS_TLS* NTS_TLS_setup(const char *hostname, int socket);
 /* Perform a TLS handshake
  *
  * RETURNS
- *      0 upon success
- *      1 if it needs to be retried (e.g. if the socket is non-blocking)
- *     -1 upon permanent failure
+ *      > 0 upon success
+ *      0   if it needs to be retried (e.g. if the socket is non-blocking)
+ *      < 0 upon permanent failure
  *
  */
 int NTS_TLS_handshake(NTS_TLS *session);

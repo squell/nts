@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <endian.h>
+#include <errno.h>
 
 #include "nts.h"
 
@@ -181,9 +182,9 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
         *response = (struct NTS_Agreement) { .error = NTS_INTERNAL_CLIENT_ERROR };
 
         #define CHECK(expr, err) {               \
-                if (expr); else {                 \
+                if (expr); else {                \
                         response->error = (err); \
-                        return -1;               \
+                        return -EBADMSG;         \
                 }                                \
         }
 
@@ -194,12 +195,12 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
                 case NTS_Error:
                         CHECK((val = NTS_decode_u16(&rec)) >= 0, NTS_BAD_RESPONSE);
                         response->error = val;
-                        return -1;
+                        return -EBADMSG;
 
                 case NTS_Warning:
-                        CHECK(NTS_decode_u16(&rec) >= 0, NTS_BAD_RESPONSE);
                         response->error = NTS_UNEXPECTED_WARNING;
-                        return -1;
+                        CHECK(NTS_decode_u16(&rec) >= 0, NTS_BAD_RESPONSE);
+                        return -EBADMSG;
 
                 case NTS_EndOfMessage:
                         if (ntp_server_terminator)
@@ -211,7 +212,7 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
                                 return 0;
                         } else {
                                 response->error = NTS_BAD_RESPONSE;
-                                return -1;
+                                return -EBADMSG;
                         }
 
                 case NTS_NextProto:
@@ -260,6 +261,6 @@ int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *
         }
 
         response->error = NTS_INSUFFICIENT_DATA;
-        return -1;
+        return -ENODATA;
 }
 #undef CHECK

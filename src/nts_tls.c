@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <assert.h>
+#include <errno.h>
 
 #ifdef USE_GNUTLS
 #include <gnutls/gnutls.h>
@@ -35,12 +36,12 @@ int NTS_TLS_extract_keys(
                 return -2;
 
         for (int i=0; i < 2; i++) {
-                const char context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
+                const uint8_t context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
 #ifdef USE_GNUTLS
                 if (gnutls_prf_rfc5705(
                                         session,
                                         sizeof(label), label,
-                                        sizeof(context), context,
+                                        sizeof(context), (const char*)context,
                                         info->key_size,
                                         (char *)keys[i]
                                 ) != GNUTLS_E_SUCCESS)
@@ -49,10 +50,10 @@ int NTS_TLS_extract_keys(
                                         session,
                                         keys[i], info->key_size,
                                         label, sizeof label,
-                                        (uint8_t *)context, sizeof context, 1)
+                                        context, sizeof context, 1)
                                 != 1)
 #endif
-                        return -1;
+                        return -EBADE;
         }
 
         return 0;
@@ -64,24 +65,24 @@ int NTS_TLS_handshake(NTS_TLS *opaque) {
 
         int result = gnutls_handshake(session);
         if (result == GNUTLS_E_SUCCESS)
-                return 0;
+                return 1;
         else
-                return gnutls_error_is_fatal(result)? -1 : 1;
+                return gnutls_error_is_fatal(result)? -EIO : 0;
 #else
         SSL *session = (void *)opaque;
 
         int result = SSL_connect(session);
         if (result == 1)
-                return 0;
+                return 1;
 
         switch (SSL_get_error(session, result)) {
         case SSL_ERROR_ZERO_RETURN:
-                return 0;
+                return 1;
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
-                return 1;
+                return 0;
         default:
-                return -1;
+                return -EIO;
         }
 #endif
 }

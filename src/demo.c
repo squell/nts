@@ -32,7 +32,7 @@ int main(int argc, char **argv)
         NTS_TLS *tls = NTS_TLS_setup(hostname, sock);
         assert(tls);
 
-        assert(NTS_TLS_handshake(tls) == 0);
+        assert(NTS_TLS_handshake(tls) > 0);
 
 #ifdef USE_GNUTLS
         char *desc = gnutls_session_get_desc((gnutls_session_t)tls);

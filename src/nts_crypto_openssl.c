@@ -11,6 +11,10 @@
 #    warning The OpenSSL workaround is not necessary.
 #endif
 
+#if !defined(OPENSSL_WORKAROUND) && !OPENSSL_VERSION_PREREQ(3,2)
+#    warning The OpenSSL workaround is necessary.
+#endif
+
 static const struct NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
         { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
@@ -35,13 +39,13 @@ typedef int init_f(EVP_CIPHER_CTX*, const EVP_CIPHER*, ENGINE*, const uint8_t*, 
 typedef int upd_f(EVP_CIPHER_CTX*, uint8_t*, int*, const uint8_t*, int);
 
 static int process_assoc_data(
-        EVP_CIPHER_CTX *state,
-        const AssociatedData *info,
-        const struct NTS_AEADParam *aead,
+                EVP_CIPHER_CTX *state,
+                const AssociatedData *info,
+                const struct NTS_AEADParam *aead,
 
-        init_f EVP_CryptInit_ex,
-        upd_f EVP_CryptUpdate
-) {
+                init_f EVP_CryptInit_ex,
+                upd_f EVP_CryptUpdate) {
+
         /* process the associated data and nonce first */
         const AssociatedData *last = NULL;
         if (aead->nonce_is_iv) {

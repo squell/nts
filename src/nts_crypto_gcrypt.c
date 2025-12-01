@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #include "nts_crypto.h"
 
 #include <assert.h>
@@ -62,9 +64,12 @@ static int gcrypt_mode(const struct NTS_AEADParam *aead) {
         default:
                 assert(!"unreachable");
         }
+        /* this is never reached */
+        return -1;
 }
 
 int NTS_encrypt(uint8_t *ctxt,
+                int ctxt_len,
                 const uint8_t *ptxt,
                 int ptxt_len,
                 const AssociatedData *info,
@@ -72,6 +77,8 @@ int NTS_encrypt(uint8_t *ctxt,
                 const uint8_t *key) {
 
         int result = -1;
+
+        (void) ctxt_len;
 
         gcry_cipher_hd_t handle;
         CHECK(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
@@ -97,6 +104,7 @@ exit:
 }
 
 int NTS_decrypt(uint8_t *ptxt,
+                int ptxt_len,
                 const uint8_t *ctxt,
                 int ctxt_len,
                 const AssociatedData *info,
@@ -104,6 +112,8 @@ int NTS_decrypt(uint8_t *ptxt,
                 const uint8_t *key) {
 
         int result = -1;
+
+        (void) ptxt_len;
 
         gcry_cipher_hd_t handle;
         CHECK(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);

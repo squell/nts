@@ -215,7 +215,7 @@ NTS_TLS* NTS_TLS_setup(
         #undef CLEANUP
         #define CLEANUP ctx_cleanup
 
-        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
         CHECK(SSL_CTX_set_default_verify_paths(ctx) == 1);
         CHECK(SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION) == 1);
 

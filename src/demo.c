@@ -85,7 +85,7 @@ retry:
                 if (NTS_decode_response(buffer, bufp - buffer, &NTS) < 0) {
                         printf("NTS error: %s (read: %ld bytes)\n", NTS_error_string(NTS.error), readbytes);
                         if (NTS.error == NTS_INSUFFICIENT_DATA) {
-                                goto retry;
+//                                goto retry;
                         }
                         goto end;
                 }
@@ -119,6 +119,8 @@ retry:
                 };
 
                 assert(NTS_TLS_extract_keys(tls, NTS.aead_id, c2s, s2c, 64) == 0);
+		memcpy(c2s, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 32);
+		memcpy(s2c, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 32);
         } else {
                 if (readbytes == 0) goto retry;
                 assert(!"could not read response");

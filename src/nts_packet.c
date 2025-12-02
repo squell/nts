@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -99,6 +100,18 @@ static int NTS_decode_record(slice *message, struct NTS_Record *record) {
         case NTS_NextProto:
                 if (body_size % 2 != 0) goto error;
                 break;
+	case 0x4001:
+		printf("algo list [%d]\n", body_size);
+		for(int i=0; i < body_size/2; i++)
+			printf("%d,", ntohs(*(uint16_t*)&record->body.data[i*2]));
+		printf("\n");
+		break;
+	case 0x4004:
+		printf("proto list [%d]\n", body_size);
+		for(int i=0; i < body_size/2; i++)
+			printf("%d,", ntohs(*(uint16_t*)&record->body.data[i*2]));
+		printf("\n");
+		break;
         default:
                 if (is_critical)
                         return -NTS_UNKNOWN_CRIT_RECORD;
@@ -138,6 +151,29 @@ static int NTS_encode_record_u16(
         return 0;
 }
 
+static int NTS_encode_record_u8(
+                slice *message,
+                bool critical,
+                enum NTS_RecordType type,
+                const uint8_t *data, size_t num_bytes) {
+
+        size_t bytes_remaining = capacity(message);
+        if (num_bytes >= 0x10000 || bytes_remaining < 4 + num_bytes)
+                /* not enough space */
+                return -NTS_INSUFFICIENT_DATA;
+
+        if (critical)
+                type |= 0x8000;
+
+        push_u16(&message->data, type);
+        push_u16(&message->data, num_bytes);
+
+	memcpy(message->data, data, num_bytes);
+	message->data += num_bytes;
+
+        return 0;
+}
+
 int NTS_encode_request(
                 uint8_t *buffer,
                 size_t buf_size,
@@ -162,8 +198,10 @@ int NTS_encode_request(
         result  = NTS_encode_record_u16(&request, true, NTS_NextProto, proto, ELEMENTSOF(proto));
         result += NTS_encode_record_u16(&request, true, NTS_AEADAlgorithm, aead, aead_len);
 #ifdef CHRONY_WORKAROUND
-        result += NTS_encode_record_u16(&request, false, NTS_Chrony_BugWorkaround, NULL, 0);
+        //result += NTS_encode_record_u16(&request, false, NTS_Chrony_BugWorkaround, NULL, 0);
 #endif
+        result += NTS_encode_record_u8(&request, true, 0x4006, (uint8_t*)"Jeff", 4);
+        result += NTS_encode_record_u8(&request, true, 0x4002, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 64);
         result += NTS_encode_record_u16(&request, true, NTS_EndOfMessage, NULL, 0);
 
         return (result<0)? result : request.data - buffer;

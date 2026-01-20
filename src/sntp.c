@@ -7,7 +7,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <endian.h>
 
 #include "sntp.h"
 #include "nts_extfields.h"
@@ -45,7 +44,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
 
         /* take time measurement and send NTP packet */
         uint64_t start;
-        packet.timestamp[3] = htobe64(start = get_current_ntp_time());
+        packet.timestamp[3] = htonll(start = get_current_ntp_time());
 
         unsigned char buf[1280];
         memcpy(buf, &packet, sizeof(packet));
@@ -67,7 +66,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 printf("Kiss of death: %.4s\n", packet.reference_id);
 
         assert(packet.stratum != 0);
-        assert(start == be64toh(packet.timestamp[1]));
+        assert(start == ntohll(packet.timestamp[1]));
 
         if (cfg) {
                 assert(n > 48);
@@ -91,8 +90,8 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
         long double stamps[5] = { 0, }, *T = stamps;
 
         T[1] = start;
-        T[2] = be64toh(packet.timestamp[2]);
-        T[3] = be64toh(packet.timestamp[3]);
+        T[2] = ntohll(packet.timestamp[2]);
+        T[3] = ntohll(packet.timestamp[3]);
         T[4] = get_current_ntp_time();
 
         long double d = (T[4] - T[1]) - (T[3] - T[2]);

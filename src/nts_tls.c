@@ -53,7 +53,7 @@ int NTS_TLS_extract_keys(
                                         context, sizeof context, 1)
                                 != 1)
 #endif
-                        return -EBADE;
+                        return -EINVAL;
         }
 
         return 0;

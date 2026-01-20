@@ -4,7 +4,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <arpa/inet.h>
-#include <endian.h>
 #include <errno.h>
 
 #include "nts.h"
@@ -44,7 +43,7 @@ static size_t capacity(const slice *p) {
 
 /* does not check bounds */
 static void push_u16(uint8_t **data, uint16_t value) {
-        value = htobe16(value);
+        value = htons(value);
         memcpy(*data, &value, 2);
         *data += 2;
 }
@@ -52,7 +51,7 @@ static void push_u16(uint8_t **data, uint16_t value) {
 static uint16_t u16_from_bytes(uint8_t bytes[2]) {
         uint16_t value;
         memcpy(&value, bytes, 2);
-        return be16toh(value);
+        return ntohs(value);
 }
 
 struct NTS_Record {

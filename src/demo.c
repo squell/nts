@@ -40,21 +40,23 @@ int main(int argc, char **argv)
         gnutls_free(desc);
 #endif
 
-        uint16_t pref_arr[4] = { 0, }, *prefs = NULL;
-        if (argc > 5) {
-                printf("too many AEAD's specified\n");
-                goto end;
-        } else if (argc > 2) {
+        uint16_t pref_arr[6] = { 0, }, *prefs = NULL;
+        if (argc > 2) {
                 prefs = pref_arr;
                 for (char **arg = argv+2; *arg; arg++) {
-                        #define parse(type) if (strstr(#type, *arg)) \
-                                (void) (NTS_get_param(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type))
-                        if (strnlen(*arg, 3) < 3) continue; else
-                        parse(AEAD_AES_SIV_CMAC_256); else
-                        parse(AEAD_AES_SIV_CMAC_384); else
-                        parse(AEAD_AES_SIV_CMAC_512); else
-                        parse(AEAD_AES_128_GCM_SIV); else
-                        parse(AEAD_AES_256_GCM_SIV); else {
+                        if (prefs >= &pref_arr[ELEMENTSOF(pref_arr)-1]) {
+                                 printf("too many AEAD's specified\n");
+                                 goto end;
+                        }
+                        #define parse(type) ((strstr(#type, *arg)) && \
+                                (NTS_get_param(*prefs++ = NTS_##type) || printf("warning: AEAD %s is not supported by this build\n", #type)))
+                        if (strnlen(*arg, 3) < 3 || !(
+                                parse(AEAD_AES_SIV_CMAC_256) ||
+                                parse(AEAD_AES_SIV_CMAC_384) ||
+                                parse(AEAD_AES_SIV_CMAC_512) ||
+                                parse(AEAD_AES_128_GCM_SIV) ||
+                                parse(AEAD_AES_256_GCM_SIV)
+                        )) {
                                 printf("unknown AEAD: %s\n", *arg);
                                 goto end;
                         }

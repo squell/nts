@@ -37,6 +37,7 @@ union ctx {
 };
 
 int NTS_encrypt(uint8_t *ctxt,
+                int _ctxt_len,
                 const uint8_t *ptxt,
                 int ptxt_len,
                 const AssociatedData *info,
@@ -115,6 +116,7 @@ int NTS_encrypt(uint8_t *ctxt,
 }
 
 int NTS_decrypt(uint8_t *ptxt,
+                int _ptxt_len,
                 const uint8_t *ctxt,
                 int ctxt_len,
                 const AssociatedData *info,

@@ -1,6 +1,6 @@
 .PHONY: all clean test fuzz fuzz_ntp fuzz_ntske demo nts_test
 
-CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11
+CFLAGS ?= -Wall -Wextra -std=gnu11
 TLS ?= gnutls
 
 ifeq ($(TLS), gnutls)

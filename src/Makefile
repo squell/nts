@@ -1,7 +1,7 @@
 .PHONY: all clean test fuzz fuzz_ntp fuzz_ntske demo nts_test
 
 CFLAGS ?= -Wall -Wextra -pedantic -std=gnu11
-TLS ?= gnutls
+TLS ?= openssl
 
 ifeq ($(TLS), gnutls)
   FINAL_LINK = -lgnutls
@@ -26,6 +26,9 @@ else
 endif
 
 demo: demo_$(TLS).o nts_packet.o nts_$(TLS).o nts_error.o sntp.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
+	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
+
+dummy-server: dummy-server.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
 	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
@@ -55,7 +58,7 @@ all: demo qdntp nts_fuzz nts_test \
 	nts_crypto_openssl.o nts_crypto_libaes_siv.o nts_crypto_gcrypt.o nts_crypto_nettle.o
 
 clean:
-	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda
+	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda dummy-server
 
 demo_openssl.o: demo.c nts.h nts_extfields.h sntp.h
 	$(CC) $(CFLAGS) -o $@ -c $<

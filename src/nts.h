@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 #pragma once
 
+#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
-#include <errno.h>
 
 /* algorithm type is not made into a full enum since it eases ptr-conversions */
 typedef uint16_t NTS_AEADAlgorithmType;

@@ -5,6 +5,8 @@
 #else
 #    define _GNU_SOURCE 1
 #    include <assert.h>
+#    include <stdio.h>
+#    include <string.h>
 #    define HAVE_OPENSSL 1
 #    define assert_se assert
 #    define TEST(name) static void test_##name(void)
@@ -19,16 +21,11 @@
      } int _placeholder
 #endif
 
-#include <string.h>
-#include <stdio.h>
+#include <openssl/evp.h>
 
 #include "nts.h"
-#include "nts_extfields.h"
 #include "nts_crypto.h"
-
-#if HAVE_OPENSSL
-#include <openssl/ssl.h>
-#endif
+#include "nts_extfields.h"
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wshadow"
@@ -268,7 +265,8 @@ TEST(ntp_field_decoding) {
 
         uint8_t *p =  buffer + 48;
 
-        char ident[32] = "Silence speaks louder than words";
+        char ident[] = "Silence speaks louder than words";
+        assert(strlen(ident) == 32);
 
         /* this deliberately breaks padding rules and sneaks an encrypted identifier */
         encode_record_raw_ext(&p, 0x0104, ident, 32);

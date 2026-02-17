@@ -1,9 +1,5 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/socket.h>
 #include <assert.h>
 
 #ifdef USE_GNUTLS
@@ -11,6 +7,8 @@
 #else
 #include <openssl/ssl.h>
 #endif
+#include <string.h>
+#include <unistd.h>
 
 #include "nts.h"
 
@@ -112,7 +110,7 @@ ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
         case SSL_ERROR_WANT_WRITE:
                 return 0;
         default:
-                return -1;
+                return -EIO;
         }
 #endif
 }
@@ -136,7 +134,7 @@ ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
         case SSL_ERROR_WANT_WRITE:
                 return 0;
         default:
-                return -1;
+                return -EIO;
         }
 #endif
 }
@@ -168,9 +166,6 @@ void NTS_TLS_close(NTS_TLS *opaque) {
 #endif
 }
 
-#define CHECK(what) if(what); else goto CLEANUP;
-#define CLEANUP exit
-
 #ifdef USE_GNUTLS
 
 NTS_TLS* NTS_TLS_setup(
@@ -181,31 +176,34 @@ NTS_TLS* NTS_TLS_setup(
 
         gnutls_certificate_credentials_t certs = NULL;
         gnutls_session_t tls = NULL;
-        CHECK(gnutls_certificate_allocate_credentials(&certs) == GNUTLS_E_SUCCESS);
-        #undef CLEANUP
-        #define CLEANUP ctx_cleanup
+        if (gnutls_certificate_allocate_credentials(&certs) != GNUTLS_E_SUCCESS)
+            goto exit;
 
-        CHECK(gnutls_init(&tls, GNUTLS_CLIENT) == GNUTLS_E_SUCCESS);
-        #undef CLEANUP
-        #define CLEANUP sess_cleanup
+        if (gnutls_init(&tls, GNUTLS_CLIENT) != GNUTLS_E_SUCCESS)
+            goto ctx_cleanup;
 
-        CHECK(gnutls_certificate_set_x509_system_trust(certs) > 0);
-        CHECK(gnutls_credentials_set(tls, GNUTLS_CRD_CERTIFICATE, certs) == GNUTLS_E_SUCCESS);
+        if (gnutls_certificate_set_x509_system_trust(certs) <= 0)
+            goto sess_cleanup;
+        if (gnutls_credentials_set(tls, GNUTLS_CRD_CERTIFICATE, certs) != GNUTLS_E_SUCCESS)
+            goto sess_cleanup;
 
-        CHECK(gnutls_priority_set_direct(tls, "NORMAL:-VERS-ALL:+VERS-TLS1.3", NULL) == GNUTLS_E_SUCCESS);
+        if (gnutls_priority_set_direct(tls, "NORMAL:-VERS-ALL:+VERS-TLS1.3", NULL) != GNUTLS_E_SUCCESS)
+            goto sess_cleanup;
         gnutls_session_set_verify_cert(tls, hostname, 0);
 
-        CHECK(gnutls_server_name_set(tls, GNUTLS_NAME_DNS, hostname, strlen(hostname)) == GNUTLS_E_SUCCESS);
+        if (gnutls_server_name_set(tls, GNUTLS_NAME_DNS, hostname, strlen(hostname)) != GNUTLS_E_SUCCESS)
+            goto sess_cleanup;
 
         unsigned char alpn[] = "ntske/1";
-        CHECK(
+        if (
                 gnutls_alpn_set_protocols(
                         tls,
                         &(gnutls_datum_t){ .data = alpn, .size = strlen((char*)alpn) },
                         1,
                         GNUTLS_ALPN_MANDATORY
-                ) == GNUTLS_E_SUCCESS
-        );
+                ) != GNUTLS_E_SUCCESS
+        )
+            goto sess_cleanup;
 
         gnutls_transport_set_int(tls, socket);
         gnutls_handshake_set_timeout(tls, GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT);
@@ -227,31 +225,45 @@ NTS_TLS* NTS_TLS_setup(
                 const char *hostname,
                 int socket) {
 
+        int r;
+
         assert(hostname);
 
         SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-        CHECK(ctx);
-        #undef CLEANUP
-        #define CLEANUP ctx_cleanup
+        if (!ctx)
+                goto exit;
 
         SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-        CHECK(SSL_CTX_set_default_verify_paths(ctx) == 1);
-        CHECK(SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION) == 1);
+        r = SSL_CTX_set_default_verify_paths(ctx);
+        if (r != 1)
+                goto ctx_cleanup;
+
+        r = SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
+        if (r != 1)
+                goto ctx_cleanup;
 
         SSL *tls = SSL_new(ctx);
-        CHECK(tls);
-        #undef CLEANUP
-        #define CLEANUP sess_cleanup
+        if (!tls)
+                goto ctx_cleanup;
 
-        CHECK(SSL_set1_host(tls, hostname) == 1);
-        CHECK(SSL_set_tlsext_host_name(tls, hostname) == 1);
+        r = SSL_set1_host(tls, hostname);
+        if (r != 1)
+                goto sess_cleanup;
+
+        r = SSL_set_tlsext_host_name(tls, hostname);
+        if (r != 1)
+                goto sess_cleanup;
 
         unsigned char alpn[] = "\x07ntske/1";
-        CHECK(SSL_set_alpn_protos(tls, alpn, strlen((char*)alpn)) == 0);
+        r = SSL_set_alpn_protos(tls, alpn, strlen((char*)alpn));
+        if (r != 0)
+                goto sess_cleanup;
 
         BIO *bio = BIO_new(BIO_s_socket());
-        CHECK(bio);
-        BIO_set_fd(bio, socket, BIO_CLOSE);
+        if (!bio)
+                goto sess_cleanup;
+
+        BIO_set_fd(bio, socket, BIO_NOCLOSE);
         SSL_set_bio(tls, bio, bio);
 
         SSL_CTX_free(ctx);

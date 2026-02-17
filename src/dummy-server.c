@@ -10,6 +10,7 @@
 #include <openssl/ssl.h>
 
 #include "nts.h"
+#include "nts_extfields.h"
 
 struct ntp_packet {
         uint8_t li_vn_mode;
@@ -21,6 +22,14 @@ struct ntp_packet {
         char reference_id[4];
         uint64_t timestamp[4];
 };
+
+static const NTS_AEADAlgorithmType algo = NTS_AEAD_AES_SIV_CMAC_256;
+
+typedef uint8_t AEADKey[32];
+
+static struct {
+    AEADKey c2s, s2c;
+} key;
 
 static void serve_ntp_request(uint16_t port)
 {
@@ -42,7 +51,26 @@ static void serve_ntp_request(uint16_t port)
 
     assert(len >= 48);
 
+    const struct NTS_AEADParam *param = NTS_get_param(algo);
+    assert(param);
+
     memcpy(&packet, buf, sizeof(packet));
+
+    uint8_t unique_id[32];
+    if (len > 48) {
+        struct NTS_Query const query = {
+            { (void*)"42", 2 },
+            key.s2c, key.c2s,
+            *param,
+            0,
+        };
+        struct NTS_Receipt rcpt;
+        assert(NTS_parse_extension_fields(&buf, len, &query, &rcpt) > 0);
+        /* getting "new cookies" from a client is an error */
+        assert(rcpt.new_cookie->data == NULL);
+
+        memcpy(unique_id, rcpt.identifier, 32);
+    }
 
     /* simulate a SNTP reponse - you are always 0.25 seconds behind */
     uint64_t reply_time = be64toh(packet.timestamp[3]) + (1ULL<<30);
@@ -55,7 +83,23 @@ static void serve_ntp_request(uint16_t port)
     packet.timestamp[3] = htobe64(reply_time);
     packet.timestamp[2] = htobe64(reply_time);
 
-    sendto(sock, &packet, sizeof(packet), MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
+    if (len > 48) {
+        struct NTS_Query const query = {
+            { (void*)"42", 2 },
+            key.s2c, key.c2s,
+            *param,
+            0,
+        };
+        zero(buf);
+        memcpy(buf, &packet, sizeof(packet));
+        int resplen = NTS_add_extension_fields(&buf, &query, &unique_id);
+        /* TODO: add_extension_fields insists on generating its own uniq id and is not adding cookies */
+
+        assert(resplen > 0);
+        sendto(sock, buf, resplen, MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
+    } else {
+        sendto(sock, &packet, sizeof(packet), MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
+    }
 }
 
 static void wait_for_nts_ke(void)
@@ -97,7 +141,8 @@ static void wait_for_nts_ke(void)
         abort();
     }
 
-    NTS_AEADAlgorithmType algo = NTS_AEAD_AES_SIV_CMAC_256;
+    /* store the key */
+    assert(NTS_TLS_extract_keys((void*)tls, algo, key.c2s, key.s2c, sizeof(AEADKey)) == 0);
 
     /* send a static reply */
     uint16_t reply[] = {
@@ -117,4 +162,5 @@ int main(void)
 {
     wait_for_nts_ke();
     serve_ntp_request(12345);
+    puts("OK");
 }

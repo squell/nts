@@ -14,7 +14,7 @@ else
 endif
 
 ifeq ($(CRYPTO),libaes_siv)
-  LINK += ../libaes_siv/libaes_siv.a -lcrypto
+ $(error "libaes is not supported")
 else ifeq ($(CRYPTO), gcrypt)
   LINK += -lgcrypt
 else ifeq ($(CRYPTO), openssl)
@@ -34,7 +34,7 @@ qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o
 	$(CC) $+ $(LINK) -lcrypto -o $@
 
-nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o
+nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o fuzz-nullcipher.o
 	$(CC) $+ $(CFLAGS) -o $@
 
 test: nts_test
@@ -52,7 +52,7 @@ fuzz_ntp: nts_fuzz
 
 all: demo qdntp nts_fuzz nts_test \
 	nts_openssl.o nts_gnutls.o demo_openssl.o demo_gnutls.o \
-	nts_crypto_openssl.o nts_crypto_libaes_siv.o nts_crypto_gcrypt.o nts_crypto_nettle.o
+	nts_crypto_openssl.o nts_crypto_gcrypt.o nts_crypto_nettle.o
 
 clean:
 	rm -f a.out *.o demo qdntp nts_test nts_fuzz *.gcov *.gcno *.gcda
@@ -70,14 +70,13 @@ nts_gnutls.o: nts_tls.c nts.h
 
 nts_crypto_openssl.o: nts_crypto_openssl.c nts_crypto.h nts.h nts_extfields.h
 nts_crypto_gcrypt.o: nts_crypto_gcrypt.c nts_crypto.h nts.h nts_extfields.h
-nts_crypto_libaes_siv.o: nts_crypto_libaes_siv.c nts_crypto.h nts.h nts_extfields.h
-	$(CC) $(CFLAGS) -I../libaes_siv -o $@ -c $<
 nts_crypto_nettle.o: nts_crypto_nettle.c nts_crypto.h nts.h nts_extfields.h
 
 nts_error.o: nts.h nts_error.c
 nts_extfields.o: nts_extfields.c nts_extfields.h nts.h nts_crypto.h
 nts_fuzz.o: nts_fuzz.c nts.h nts_crypto.h nts_extfields.h
 nts_packet.o: nts_packet.c nts.h
+fuzz-nullcipher.o: fuzz-nullcipher.o nts_crypto.h
 test-nts.o: test-nts.c nts.h nts_extfields.h nts_crypto.h
 	$(CC) $(CFLAGS) -DNTS_STANDALONE_TEST -o $@ -c $<
 qdntp.o: qdntp.c sntp.h

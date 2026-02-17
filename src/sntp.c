@@ -23,7 +23,7 @@ struct ntp_packet {
         uint32_t root_dispersion;
         char reference_id[4];
         uint64_t timestamp[4];
-} packet = { 043, };
+};
 
 /* check that there is no padding */
 typedef int ntp_padding_check[sizeof(struct ntp_packet) == 48];
@@ -40,6 +40,8 @@ static uint64_t get_current_ntp_time(void) {
 int NTS_attach_socket(const char *host, int port, int type);
 
 void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtrip_delay, double *time_offset, int *new_cookies) {
+        struct ntp_packet packet = { 043, };
+
         int sock = NTS_attach_socket(host, port, SOCK_DGRAM);
         assert(sock > 0);
 
@@ -52,7 +54,8 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
         unsigned int buflen = sizeof(packet);
         unsigned char unique[32];
         if (cfg) {
-                buflen = NTS_add_extension_fields(buf, cfg, &unique);
+                assert(getrandom(unique, sizeof(unique), 0) == sizeof(unique));
+                buflen = NTS_add_extension_fields(buf, cfg, unique);
                 assert(buflen > 0);
         }
         assert(write(sock, buf, buflen) == (ssize_t)buflen);
@@ -61,6 +64,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
         ssize_t n = read(sock, &buf, sizeof(buf));
         memcpy(&packet, buf, sizeof(packet));
         assert(n >= (int)sizeof(packet));
+        close(sock);
 
         assert((packet.li_vn_mode & 077) == 044);
         if (packet.stratum == 0)

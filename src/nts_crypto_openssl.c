@@ -14,10 +14,6 @@
 #    warning The OpenSSL workaround is not necessary.
 #endif
 
-#if !defined(OPENSSL_WORKAROUND) && !OPENSSL_VERSION_PREREQ(3,2)
-#    warning The OpenSSL workaround is necessary.
-#endif
-
 static const struct NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
         { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },

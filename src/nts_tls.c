@@ -31,9 +31,9 @@ int NTS_TLS_extract_keys(
 
         const struct NTS_AEADParam *info = NTS_get_param(aead);
         if (!info)
-                return -3;
+                return -EINVAL;
         else if (info->key_size > key_capacity)
-                return -2;
+                return -ENOBUFS;
 
         for (int i=0; i < 2; i++) {
                 const uint8_t context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
@@ -103,7 +103,7 @@ ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
         case SSL_ERROR_WANT_WRITE:
                 return 0;
         default:
-                return -1;
+                return -EIO;
         }
 #endif
 }
@@ -124,7 +124,7 @@ ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
         case SSL_ERROR_WANT_WRITE:
                 return 0;
         default:
-                return -1;
+                return -EIO;
         }
 #endif
 }

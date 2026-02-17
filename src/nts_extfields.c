@@ -3,7 +3,6 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include <endian.h>
@@ -163,7 +162,7 @@ int NTS_parse_extension_fields(
 
         assert(src_len >= 48 && src_len <= sizeof(*src));
         slice buf = { *src + 48, *src + src_len };
-        int processed = 0;
+        bool processed = 0;
 
         while (capacity(&buf) >= 4) {
                 uint16_t type, len;
@@ -175,7 +174,7 @@ int NTS_parse_extension_fields(
                 case UniqueIdentifier:
                         CHECK(len - 4 == 32);
                         fields->identifier = (uint8_t (*)[32])(buf.data + 4);
-                        ++processed;
+                        processed = true;
                         break;
                 case AuthEncExtFields: {
                         uint16_t nonce_len, ciph_len;
@@ -222,7 +221,7 @@ int NTS_parse_extension_fields(
 
                         /* ignore any further fields after this,
                          * since they are not authenticated */
-                        return processed;
+                        return processed? plain.data - *src : 0;
                 }
 
                 default:

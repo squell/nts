@@ -54,6 +54,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
         unsigned int buflen = sizeof(packet);
         unsigned char unique[32];
         if (cfg) {
+                assert(getrandom(unique, sizeof(unique), 0) == sizeof(unique));
                 buflen = NTS_add_extension_fields(&buf, cfg, &unique);
                 assert(buflen > 0);
         }

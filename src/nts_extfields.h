@@ -15,7 +15,7 @@ typedef struct NTS_Receipt {
 } NTS_Receipt;
 
 /* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.
- * If identifier is not NULL, it will hold the generated unique identifier upon success.
+ * The identifier argument supplies the unique identifier to be used. For clients, this should be generated randomly.
  *
  * RETURNS
  *      The amount of data encoded in bytes (including NTP packet size). Zero bytes encoded indicates an error (in which case the

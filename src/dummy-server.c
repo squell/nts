@@ -196,9 +196,27 @@ static void wait_for_nts_ke(void)
     SSL_CTX_free(ctx);
 }
 
+static pthread_t ntp;
+
+void *do_ntp(void *arg)
+{
+    (void) arg;
+
+    for (;;) {
+        serve_ntp_request(12345);
+        puts("NTP");
+    }
+
+    return NULL;
+}
+
 int main(void)
 {
-    wait_for_nts_ke();
-    serve_ntp_request(12345);
-    puts("OK");
+    pthread_create(&ntp, NULL, do_ntp, NULL);
+    for (;;) {
+        wait_for_nts_ke();
+        puts("KE");
+    }
+
+    return 0;
 }

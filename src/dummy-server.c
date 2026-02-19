@@ -130,10 +130,8 @@ static void wait_for_nts_ke(void)
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
     assert(ctx);
 
-    //SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
-
-    assert(SSL_CTX_use_certificate_chain_file(ctx, "chain.pem") > 0);
-    assert(SSL_CTX_use_PrivateKey_file(ctx, "pkey.pem", SSL_FILETYPE_PEM) > 0);
+    assert(SSL_CTX_use_certificate_chain_file(ctx, "server.crt") > 0);
+    assert(SSL_CTX_use_PrivateKey_file(ctx, "server.key", SSL_FILETYPE_PEM) > 0);
 
     SSL *tls = SSL_new(ctx);
     assert(tls);

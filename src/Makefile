@@ -28,11 +28,11 @@ endif
 demo: demo_$(TLS).o nts_packet.o nts_$(TLS).o nts_error.o sntp.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
 	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
-dummy-server: dummy-server.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
-	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
-
 qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
 	$(CC) $+ -o $@
+
+dummy-server: dummy-server.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
+	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
 nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o
 	$(CC) $+ $(LINK) -lcrypto -o $@
@@ -70,6 +70,16 @@ nts_openssl.o: nts_tls.c nts.h
 	$(CC) $(CFLAGS) -o $@ -c $<
 nts_gnutls.o: nts_tls.c nts.h
 	$(CC) $(CFLAGS) -DUSE_GNUTLS -o $@ -c $<
+
+%.key:
+	openssl genrsa -out $@ 2048
+%.rootcrt: %.key
+	openssl req -x509 -noenc -key $< -subj '/CN=localhost' -out $@
+%.csr: %.key
+	openssl req -new -key $< -subj '/CN=localhost' -out $@
+%.crt: %.csr ca.key ca.crt
+	openssl req -CA ca.crt -in $< -CAkey ca.key -out $@
+	cat ca.crt >> $@
 
 nts_crypto_openssl.o: nts_crypto_openssl.c nts_crypto.h nts.h nts_extfields.h
 nts_crypto_gcrypt.o: nts_crypto_gcrypt.c nts_crypto.h nts.h nts_extfields.h

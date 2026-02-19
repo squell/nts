@@ -54,7 +54,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
         unsigned int buflen = sizeof(packet);
         unsigned char unique[32];
         if (cfg) {
-                buflen = NTS_add_extension_fields(&buf, cfg, &unique);
+                buflen = NTS_add_extension_fields(buf, cfg, &unique);
                 assert(buflen > 0);
         }
         assert(write(sock, buf, buflen) == (ssize_t)buflen);
@@ -75,7 +75,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
         if (cfg) {
                 assert(n > 48);
                 struct NTS_Receipt rcpt = { 0, };
-                assert(NTS_parse_extension_fields(&buf, n, cfg, &rcpt));
+                assert(NTS_parse_extension_fields(buf, n, cfg, &rcpt));
                 assert(rcpt.identifier);
                 assert(memcmp(rcpt.identifier, unique, 32) == 0);
                 assert(rcpt.new_cookie->data);

@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include <unistd.h>
+#include <arpa/inet.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -39,8 +40,8 @@ static void serve_ntp_request(uint16_t port)
 
     struct sockaddr_in server = { 0, }, client = { 0, };
     server.sin_family = AF_INET;
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(port);
+    inet_aton("127.0.0.1", &server.sin_addr);
 
     assert(bind(sock, (struct sockaddr*)&server, sizeof(server)) == 0);
 
@@ -73,8 +74,8 @@ static void serve_ntp_request(uint16_t port)
         memcpy(unique_id, rcpt.identifier, 32);
     }
 
-    /* simulate a SNTP reponse - you are always 0.25 seconds behind */
-    uint64_t reply_time = be64toh(packet.timestamp[3]) + (1ULL<<30);
+    /* simulate a SNTP reponse - you are always 42 seconds behind */
+    uint64_t reply_time = be64toh(packet.timestamp[3]) + (42ULL<<32);
 
     packet.li_vn_mode = 044;
     packet.stratum = 16;
@@ -87,9 +88,11 @@ static void serve_ntp_request(uint16_t port)
     if (len > 48) {
         int padding = 0;
         uint16_t payload[] = {
-            htons(0x0204 /*Cookie*/), htons(6), htons(0x1234),
-            htons(0x0204 /*Cookie*/), htons(6), htons(0x1234),
+            htons(0x0204 /*Cookie*/), htons(8), htons(1), htons(1),
+            htons(0x0204 /*Cookie*/), htons(8), htons(1), htons(2),
         };
+        static_assert(sizeof(payload)%4 == 0, "payload must dword-padded");
+
         uint16_t id_field[] = {
             htons(0x0104 /*UniqId*/), htons(36),
                2, 4, 6, 8,10,12,14,16,18,20,22,24,26,28,30,32,
@@ -121,6 +124,16 @@ static void serve_ntp_request(uint16_t port)
     } else {
         sendto(sock, &packet, sizeof(packet), MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
     }
+
+    close(sock);
+}
+
+static int alpn_select(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg)
+{
+    (void) ssl;
+    (void) arg;
+    assert(SSL_select_next_proto((unsigned char**)out, outlen, (unsigned char*)"\x07ntske/1", 8, in, inlen) == OPENSSL_NPN_NEGOTIATED);
+    return SSL_TLSEXT_ERR_OK;
 }
 
 static void wait_for_nts_ke(void)
@@ -133,15 +146,19 @@ static void wait_for_nts_ke(void)
     assert(SSL_CTX_use_certificate_chain_file(ctx, "server.crt") > 0);
     assert(SSL_CTX_use_PrivateKey_file(ctx, "server.key", SSL_FILETYPE_PEM) > 0);
 
+    SSL_CTX_set_alpn_select_cb(ctx, alpn_select, NULL);
+
     SSL *tls = SSL_new(ctx);
     assert(tls);
 
     /* await the TCP connect */
-    BIO *bio = BIO_new_accept("4460");
-    assert(bio);
-    assert(BIO_do_accept(bio) > 0);
-    assert(BIO_do_accept(bio) > 0);
-    bio = BIO_pop(bio);
+    BIO *acceptor = BIO_new_accept("4460");
+    assert(acceptor);
+    assert(BIO_do_accept(acceptor) > 0);
+    assert(BIO_do_accept(acceptor) > 0);
+    BIO *bio = BIO_pop(acceptor);
+    close(BIO_get_fd(acceptor, NULL));
+
     assert(bio);
 
     SSL_set_bio(tls, bio, bio);
@@ -168,9 +185,10 @@ static void wait_for_nts_ke(void)
         htons(1/*NextProto*/),     htons(2), htons(0),
         htons(4/*AEADAlgorithm*/), htons(2), htons(algo),
         htons(7/*NTPv4Port*/),     htons(2), htons(12345),
-        /* only send 1 cookie just to see what happens */
-        htons(5/*NTPv4Cookie*/),   htons(2), htons(1),
-        htons(0/*EndOfMessage*/),  htons(0),
+        /* only send 2 cookies just to see what happens */
+        htons(5/*NTPv4Cookie*/),   htons(4), htons(0), htons(1),
+        htons(5/*NTPv4Cookie*/),   htons(4), htons(0), htons(2),
+        htons(0/*EndOfMessage*/ | 0x8000),  htons(0),
     };
 
     SSL_write(tls, reply, sizeof(reply));

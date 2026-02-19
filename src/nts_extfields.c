@@ -71,9 +71,8 @@ int NTS_add_extension_fields(
         buf.data += 48;
 
         /* generate unique identifier */
-        uint8_t rand_buf[32], *rand = *(uniq_id? uniq_id : &rand_buf);
-        CHECK(getrandom(rand, sizeof(rand_buf), 0) == sizeof(rand_buf));
-        CHECK(write_ntp_ext_field(&buf, UniqueIdentifier, rand, sizeof(rand_buf), 16));
+        CHECK(getrandom(*uniq_id, sizeof(*uniq_id), 0) == sizeof(*uniq_id));
+        CHECK(write_ntp_ext_field(&buf, UniqueIdentifier, *uniq_id, sizeof(*uniq_id), 16));
 
         /* write cookie field */
         CHECK(write_ntp_ext_field(&buf, Cookie, nts->cookie.data, nts->cookie.length, 16));

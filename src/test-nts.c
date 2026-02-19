@@ -176,6 +176,7 @@ TEST(ntp_field_encoding) {
         uint8_t buffer[1280];
 
         uint8_t key[32] = { 0, };
+        uint8_t id[32] = { 0, };
         char cookie[] = "PAD";
 
         struct NTS_Query nts = {
@@ -186,7 +187,7 @@ TEST(ntp_field_encoding) {
         };
 
         struct NTS_Receipt rcpt = { 0, };
-        int len = NTS_add_extension_fields(&buffer, &nts, NULL);
+        int len = NTS_add_extension_fields(&buffer, &nts, &id);
         assert_se(len > 48);
         assert_se(NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 
@@ -196,13 +197,13 @@ TEST(ntp_field_encoding) {
 
         for (int i=0; i < len; i++) {
                 zero(rcpt);
-                len = NTS_add_extension_fields(&buffer, &nts, NULL);
+                len = NTS_add_extension_fields(&buffer, &nts, &id);
                 buffer[i] ^= 0x20;
                 assert_se(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
         }
 
         zero(rcpt);
-        len = NTS_add_extension_fields(&buffer, &nts, NULL);
+        len = NTS_add_extension_fields(&buffer, &nts, &id);
         nts.s2c_key = (uint8_t[32]){ 1, };
         assert_se(!NTS_parse_extension_fields(&buffer, len, &nts, &rcpt));
 }

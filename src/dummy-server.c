@@ -10,6 +10,7 @@
 #include <openssl/ssl.h>
 
 #include "nts.h"
+#include "nts_crypto.h"
 #include "nts_extfields.h"
 
 struct ntp_packet {
@@ -51,8 +52,8 @@ static void serve_ntp_request(uint16_t port)
 
     assert(len >= 48);
 
-    const struct NTS_AEADParam *param = NTS_get_param(algo);
-    assert(param);
+    const struct NTS_AEADParam *cipher = NTS_get_param(algo);
+    assert(cipher);
 
     memcpy(&packet, buf, sizeof(packet));
 
@@ -61,7 +62,7 @@ static void serve_ntp_request(uint16_t port)
         struct NTS_Query const query = {
             { (void*)"42", 2 },
             key.s2c, key.c2s,
-            *param,
+            *cipher,
             0,
         };
         struct NTS_Receipt rcpt;
@@ -84,19 +85,39 @@ static void serve_ntp_request(uint16_t port)
     packet.timestamp[2] = htobe64(reply_time);
 
     if (len > 48) {
-        struct NTS_Query const query = {
-            { (void*)"42", 2 },
-            key.s2c, key.c2s,
-            *param,
-            0,
+        int padding = 0;
+        uint16_t payload[] = {
+            htons(0x0204 /*Cookie*/), htons(6), htons(0x1234),
+            htons(0x0204 /*Cookie*/), htons(6), htons(0x1234),
         };
-        zero(buf);
-        memcpy(buf, &packet, sizeof(packet));
-        int resplen = NTS_add_extension_fields(&buf, &query, &unique_id);
-        /* TODO: add_extension_fields insists on generating its own uniq id and is not adding cookies */
+        uint16_t id_field[] = {
+            htons(0x0104 /*UniqId*/), htons(36),
+               2, 4, 6, 8,10,12,14,16,18,20,22,24,26,28,30,32,
+        };
+        memcpy(id_field+2, unique_id, sizeof(unique_id));
+        uint16_t auth_enc_field[] = {
+            htons(0x0404 /*AE Fld*/), htons(8+cipher->nonce_size+cipher->block_size+sizeof(payload)+padding),
+              htons(cipher->nonce_size),
+              htons(cipher->block_size+sizeof(payload)),
+        };
 
-        assert(resplen > 0);
-        sendto(sock, buf, resplen, MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
+        zero(buf);
+        uint8_t *p = buf;
+        p = mempcpy(p, &packet, sizeof(packet));
+        p = mempcpy(p, id_field, sizeof(id_field));
+        p = mempcpy(p, auth_enc_field, sizeof(auth_enc_field));
+
+        AssociatedData info[] = {
+            { buf,  sizeof(packet) + sizeof(id_field) },
+            { p,    cipher->nonce_size },
+            { NULL, 0 },
+        };
+
+        int ciphertext = NTS_encrypt(p + cipher->nonce_size, (uint8_t*)payload, sizeof(payload), info, cipher, key.s2c);
+        assert(ciphertext > 0);
+        p += cipher->nonce_size + ciphertext + padding;
+
+        sendto(sock, buf, p - buf, MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
     } else {
         sendto(sock, &packet, sizeof(packet), MSG_CONFIRM, (struct sockaddr*)&client, addrlen);
     }
@@ -149,7 +170,8 @@ static void wait_for_nts_ke(void)
         htons(1/*NextProto*/),     htons(2), htons(0),
         htons(4/*AEADAlgorithm*/), htons(2), htons(algo),
         htons(7/*NTPv4Port*/),     htons(2), htons(12345),
-        htons(5/*NTPv4Cookie*/),   htons(2), htons(0x3432),
+        /* only send 1 cookie just to see what happens */
+        htons(5/*NTPv4Cookie*/),   htons(2), htons(1),
         htons(0/*EndOfMessage*/),  htons(0),
     };
 

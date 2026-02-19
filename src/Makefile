@@ -1,7 +1,7 @@
 .PHONY: all clean test fuzz fuzz_ntp fuzz_ntske demo nts_test
 
 CFLAGS ?= -Wall -Wextra -std=gnu11
-TLS ?= gnutls
+TLS ?= openssl
 
 ifeq ($(TLS), gnutls)
   FINAL_LINK = -lgnutls
@@ -37,6 +37,9 @@ nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o
 nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o fuzz-nullcipher.o
 	$(CC) $+ $(CFLAGS) -o $@
 
+dummy-server: test-server.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
+	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
+
 test: nts_test
 	@./nts_test
 	@echo all tests passed
@@ -50,7 +53,7 @@ fuzz_ntp: nts_fuzz
 	afl-fuzz -V $(FUZZTIME) -i ../fuzz/nts_extfield -o out_ntp -g 48 -G 1280 -D ./nts_fuzz @@
 	@! test -e ./out_ntp/default/crashes/README.txt
 
-all: demo qdntp nts_fuzz nts_test \
+all: demo qdntp nts_fuzz nts_test dummy-server \
 	nts_openssl.o nts_gnutls.o demo_openssl.o demo_gnutls.o \
 	nts_crypto_openssl.o nts_crypto_gcrypt.o nts_crypto_nettle.o
 
@@ -79,5 +82,6 @@ nts_packet.o: nts_packet.c nts.h
 fuzz-nullcipher.o: fuzz-nullcipher.o nts_crypto.h
 test-nts.o: test-nts.c nts.h nts_extfields.h nts_crypto.h
 	$(CC) $(CFLAGS) -DNTS_STANDALONE_TEST -o $@ -c $<
+test-server.o: test-server.c nts.h nts_crypto.h nts_extfields.h
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

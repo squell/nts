@@ -33,25 +33,21 @@ struct ntp_packet {
 };
 
 /* always pick this AEAD */
-static const NTS_AEADAlgorithmType algo = NTS_AEAD_AES_SIV_CMAC_256;
+static const NTS_AEADAlgorithmType algo = NTS_AEAD_AES_SIV_CMAC_384;
 
 /* always pick this NTP port */
 static const uint16_t Port = 12345;
 
 typedef uint8_t AEADKey[64];
 
-static struct {
-    AEADKey c2s, s2c;
-} key;
-
-static void serve_ntp_request(uint16_t port) //, AEADKey send_key, AEADKey recv_key)
+static void serve_ntp_request(AEADKey c2s, AEADKey s2c)
 {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     assert(sock > 0);
 
     struct sockaddr_in server = {}, client = {};
     server.sin_family = AF_INET;
-    server.sin_port = htons(port);
+    server.sin_port = htons(Port);
     inet_aton("127.0.0.1", &server.sin_addr);
 
     assert(bind(sock, (struct sockaddr*)&server, sizeof(server)) == 0);
@@ -71,9 +67,12 @@ static void serve_ntp_request(uint16_t port) //, AEADKey send_key, AEADKey recv_
 
     uint8_t unique_id[32];
     if (len > 48) {
+        /* We only parse the extension fields to check the authenticity tag; parse_extension_fields
+         * is meant for use in clients, not servers so it'll ignore Cookie Placeholders.
+         * Also note that the order of the s2c and c2s keys has to be reversed. */
         struct NTS_Query const query = {
             { (void*)"42", 2 },
-            key.s2c, key.c2s,
+            s2c, c2s,
             *cipher,
             0,
         };
@@ -99,6 +98,7 @@ static void serve_ntp_request(uint16_t port) //, AEADKey send_key, AEADKey recv_
     if (len > 48) {
         int padding = 0;
         uint16_t payload[] = {
+            /* Always send two cookies to see what happens */
             htons(0x0204 /*Cookie*/), htons(8), htons(1), htons(1),
             htons(0x0204 /*Cookie*/), htons(8), htons(1), htons(2),
         };
@@ -131,7 +131,7 @@ static void serve_ntp_request(uint16_t port) //, AEADKey send_key, AEADKey recv_
             p + cipher->nonce_size, sizeof(buf) - (p - buf - cipher->nonce_size),
             (uint8_t*)payload, sizeof(payload),
             info,
-            cipher, key.s2c
+            cipher, s2c
         );
 
         assert(ciphertext > 0);
@@ -153,7 +153,7 @@ static int alpn_select(SSL *ssl, const unsigned char **out, unsigned char *outle
     return SSL_TLSEXT_ERR_OK;
 }
 
-static void wait_for_nts_ke(void)
+static void wait_for_nts_ke(AEADKey c2s, AEADKey s2c)
 {
     /* configure TLS */
 
@@ -195,7 +195,7 @@ static void wait_for_nts_ke(void)
     }
 
     /* store the key */
-    assert(NTS_TLS_extract_keys((void*)tls, algo, key.c2s, key.s2c, sizeof(AEADKey)) == 0);
+    assert(NTS_TLS_extract_keys((void*)tls, algo, c2s, s2c, sizeof(AEADKey)) == 0);
 
     /* send a static reply */
     uint16_t reply[] = {
@@ -215,12 +215,14 @@ static void wait_for_nts_ke(void)
 
 int main(void)
 {
+    AEADKey c2s, s2c;
+
     printf("KE: ");
-    wait_for_nts_ke();
+    wait_for_nts_ke(c2s, s2c);
     puts("OK");
 
     printf("NTP: ");
-    serve_ntp_request(Port);
+    serve_ntp_request(c2s, s2c);
     puts("OK");
 
     return 0;

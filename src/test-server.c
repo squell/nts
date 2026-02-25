@@ -40,8 +40,16 @@ static const uint16_t Port = 12345;
 
 typedef uint8_t AEADKey[64];
 
-static void serve_ntp_request(AEADKey c2s, AEADKey s2c)
-{
+static uint64_t get_current_ntp_time(void) {
+        struct timespec time;
+        clock_gettime(CLOCK_REALTIME, &time);
+
+        uint64_t secs = time.tv_sec + 2208988800; /* wrap around is intended */
+        uint64_t frac = time.tv_nsec * ((1ULL<<32) / 1E9L);
+        return secs << 32 | frac;
+}
+
+static void serve_ntp_request(AEADKey c2s, AEADKey s2c) {
     int sock = socket(AF_INET, SOCK_DGRAM, 0);
     assert(sock > 0);
 
@@ -85,15 +93,14 @@ static void serve_ntp_request(AEADKey c2s, AEADKey s2c)
     }
 
     /* simulate a SNTP reponse - you are always 42 seconds behind */
-    uint64_t reply_time = be64toh(packet.timestamp[3]) + (42ULL<<32);
+    uint64_t reply_time = get_current_ntp_time() + (42ULL<<32);
 
     packet.li_vn_mode = 044;
-    packet.stratum = 16;
+    packet.stratum = 15;
     packet.timestamp[0] = 0;
     packet.timestamp[1] = packet.timestamp[3];
-    packet.timestamp[2] = packet.timestamp[3];
-    packet.timestamp[3] = htobe64(reply_time);
     packet.timestamp[2] = htobe64(reply_time);
+    packet.timestamp[3] = htobe64(reply_time);
 
     if (len > 48) {
         int padding = 0;
@@ -145,16 +152,21 @@ static void serve_ntp_request(AEADKey c2s, AEADKey s2c)
     close(sock);
 }
 
-static int alpn_select(SSL *ssl, const unsigned char **out, unsigned char *outlen, const unsigned char *in, unsigned int inlen, void *arg)
-{
+static int alpn_select(
+                SSL *ssl,
+                const unsigned char **out,
+                unsigned char *outlen,
+                const unsigned char *in,
+                unsigned int inlen,
+                void *arg) {
+
     (void) ssl;
     (void) arg;
     assert(SSL_select_next_proto((unsigned char**)out, outlen, (unsigned char*)"\x07ntske/1", 8, in, inlen) == OPENSSL_NPN_NEGOTIATED);
     return SSL_TLSEXT_ERR_OK;
 }
 
-static void wait_for_nts_ke(AEADKey c2s, AEADKey s2c)
-{
+static void wait_for_nts_ke(AEADKey c2s, AEADKey s2c) {
     /* configure TLS */
 
     SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
@@ -198,7 +210,11 @@ static void wait_for_nts_ke(AEADKey c2s, AEADKey s2c)
     assert(NTS_TLS_extract_keys((void*)tls, algo, c2s, s2c, sizeof(AEADKey)) == 0);
 
     /* send a static reply */
+    const char ntphost[] = "127.0.0.01";
+    static_assert(strlen(ntphost) == 10, "sanity check failed");
+
     uint16_t reply[] = {
+        htobe16(6/*NTPv4Server*/),   htobe16(10), 0,0,0,0,0, /* filled in below */
         htobe16(1/*NextProto*/),     htobe16(2), htobe16(0),
         htobe16(4/*AEADAlgorithm*/), htobe16(2), htobe16(algo),
         htobe16(7/*NTPv4Port*/),     htobe16(2), htobe16(12345),
@@ -207,14 +223,14 @@ static void wait_for_nts_ke(AEADKey c2s, AEADKey s2c)
         htobe16(5/*NTPv4Cookie*/),   htobe16(4), htobe16(0), htobe16(2),
         htobe16(0/*EndOfMessage*/ | 0x8000),  htobe16(0),
     };
+    memcpy(reply+2, ntphost, sizeof(ntphost));
 
     SSL_write(tls, reply, sizeof(reply));
     SSL_free(tls);
     SSL_CTX_free(ctx);
 }
 
-int main(void)
-{
+int main(void) {
     AEADKey c2s, s2c;
 
     printf("KE: ");

@@ -2,10 +2,10 @@
 
 #include <assert.h>
 #include <endian.h>
-#include <sys/random.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/random.h>
 
 #include "nts_crypto.h"
 #include "nts_extfields.h"

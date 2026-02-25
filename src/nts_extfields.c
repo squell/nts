@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/random.h>
 
+#include "memory-util.h"
 #include "nts_crypto.h"
 #include "nts_extfields.h"
 

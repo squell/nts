@@ -10,6 +10,7 @@
 #include <gnutls/gnutls.h>
 #endif
 
+#include "memory-util.h"
 #include "nts.h"
 #include "nts_extfields.h"
 #include "sntp.h"

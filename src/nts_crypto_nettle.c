@@ -1,3 +1,4 @@
+#include "memory-util.h"
 #include "nts_crypto.h"
 
 #include <assert.h>

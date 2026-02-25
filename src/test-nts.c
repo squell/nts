@@ -1,31 +1,12 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
-#ifndef NTS_STANDALONE_TEST
-#    include "tests.h"
-#    include "timesyncd-conf.h"
-#else
-#    define _GNU_SOURCE 1
-#    include <assert.h>
-#    include <stdio.h>
-#    include <string.h>
-#    define HAVE_OPENSSL 1
-#    define assert_se assert
-#    define TEST(name) static void test_##name(void)
-#    define DEFINE_TEST_MAIN(_ignore) int main(void) { \
-        test_nts_encoding(); \
-        test_nts_decoding(); \
-        test_ntp_field_encoding(); \
-        test_ntp_field_decoding(); \
-        test_crypto(); \
-        test_keysize(); \
-        return 0; \
-     } int _placeholder
-#endif
 
 #include <openssl/evp.h>
 
 #include "nts.h"
 #include "nts_crypto.h"
 #include "nts_extfields.h"
+#include "tests.h"
+#include "timesyncd-forward.h"
 
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 #pragma GCC diagnostic ignored "-Wshadow"

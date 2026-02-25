@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 
 #include "nts_crypto.h"
+#include "timesyncd-forward.h"
 
 #include <assert.h>
 #include <gcrypt.h>

@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
 
-#include <assert.h>
 #include <string.h>
 
 #include "nts_crypto.h"
+#include "timesyncd-forward.h"
 
 /* Null cipher, to let the fuzzer also generate meaningful inputs for
  * the encrypted extension fields */

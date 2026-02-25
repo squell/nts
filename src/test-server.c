@@ -47,7 +47,7 @@ static void serve_ntp_request(AEADKey c2s, AEADKey s2c)
 
     struct sockaddr_in server = {}, client = {};
     server.sin_family = AF_INET;
-    server.sin_port = htons(Port);
+    server.sin_port = htobe16(Port);
     inet_aton("127.0.0.1", &server.sin_addr);
 
     assert(bind(sock, (struct sockaddr*)&server, sizeof(server)) == 0);
@@ -99,20 +99,20 @@ static void serve_ntp_request(AEADKey c2s, AEADKey s2c)
         int padding = 0;
         uint16_t payload[] = {
             /* Always send two cookies to see what happens */
-            htons(0x0204 /*Cookie*/), htons(8), htons(1), htons(1),
-            htons(0x0204 /*Cookie*/), htons(8), htons(1), htons(2),
+            htobe16(0x0204 /*Cookie*/), htobe16(8), htobe16(1), htobe16(1),
+            htobe16(0x0204 /*Cookie*/), htobe16(8), htobe16(1), htobe16(2),
         };
         static_assert(sizeof(payload)%4 == 0, "payload must dword-padded");
 
         uint16_t id_field[] = {
-            htons(0x0104 /*UniqId*/), htons(36),
+            htobe16(0x0104 /*UniqId*/), htobe16(36),
                2, 4, 6, 8,10,12,14,16,18,20,22,24,26,28,30,32,
         };
         memcpy(id_field+2, unique_id, sizeof(unique_id));
         uint16_t auth_enc_field[] = {
-            htons(0x0404 /*AE Fld*/), htons(8+cipher->nonce_size+cipher->block_size+sizeof(payload)+padding),
-              htons(cipher->nonce_size),
-              htons(cipher->block_size+sizeof(payload)),
+            htobe16(0x0404 /*AE Fld*/), htobe16(8+cipher->nonce_size+cipher->block_size+sizeof(payload)+padding),
+              htobe16(cipher->nonce_size),
+              htobe16(cipher->block_size+sizeof(payload)),
         };
 
         zero(buf);
@@ -199,13 +199,13 @@ static void wait_for_nts_ke(AEADKey c2s, AEADKey s2c)
 
     /* send a static reply */
     uint16_t reply[] = {
-        htons(1/*NextProto*/),     htons(2), htons(0),
-        htons(4/*AEADAlgorithm*/), htons(2), htons(algo),
-        htons(7/*NTPv4Port*/),     htons(2), htons(12345),
+        htobe16(1/*NextProto*/),     htobe16(2), htobe16(0),
+        htobe16(4/*AEADAlgorithm*/), htobe16(2), htobe16(algo),
+        htobe16(7/*NTPv4Port*/),     htobe16(2), htobe16(12345),
         /* only send 2 cookies just to see what happens */
-        htons(5/*NTPv4Cookie*/),   htons(4), htons(0), htons(1),
-        htons(5/*NTPv4Cookie*/),   htons(4), htons(0), htons(2),
-        htons(0/*EndOfMessage*/ | 0x8000),  htons(0),
+        htobe16(5/*NTPv4Cookie*/),   htobe16(4), htobe16(0), htobe16(1),
+        htobe16(5/*NTPv4Cookie*/),   htobe16(4), htobe16(0), htobe16(2),
+        htobe16(0/*EndOfMessage*/ | 0x8000),  htobe16(0),
     };
 
     SSL_write(tls, reply, sizeof(reply));

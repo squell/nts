@@ -160,7 +160,7 @@ retry:
                 assert(!"could not read response");
         }
 
-        NTS_TLS_close(tls);
+        NTS_TLS_close(&tls);
 
         if(false) {
 skip_ke:
@@ -194,6 +194,6 @@ skip_ke:
         return 0;
 end:
 
-        NTS_TLS_close(tls);
+        NTS_TLS_close(&tls);
         return -1;
 }

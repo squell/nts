@@ -37,7 +37,7 @@ nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o
 nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o fuzz-nullcipher.o
 	$(CC) $+ $(CFLAGS) -o $@
 
-dummy-server: test-server.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
+dummy-server: test-nts-mockserver.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
 	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
 test: nts_test
@@ -82,6 +82,6 @@ nts_packet.o: nts_packet.c nts.h
 fuzz-nullcipher.o: fuzz-nullcipher.o nts_crypto.h
 test-nts.o: test-nts.c nts.h nts_extfields.h nts_crypto.h
 	$(CC) $(CFLAGS) -DNTS_STANDALONE_TEST -o $@ -c $<
-test-server.o: test-server.c nts.h nts_crypto.h nts_extfields.h
+test-nts-mockserver.o: test-nts-mockserver.c nts.h nts_crypto.h nts_extfields.h
 qdntp.o: qdntp.c sntp.h
 sntp.o: sntp.c sntp.h nts_extfields.h nts.h

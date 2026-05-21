@@ -78,16 +78,16 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 assert(NTS_parse_extension_fields(buf, n, cfg, &rcpt));
                 assert(rcpt.identifier);
                 assert(memcmp(rcpt.identifier, unique, 32) == 0);
-                assert(rcpt.new_cookie->data);
-                assert(rcpt.new_cookie->length <= cfg->cookie.length);
+                assert(rcpt.new_cookie->iov_base);
+                assert(rcpt.new_cookie->iov_len <= cfg->cookie.iov_len);
                 if (new_cookies) {
                         *new_cookies = 0;
-                        while (*new_cookies < 8 && rcpt.new_cookie[*new_cookies].data) {
+                        while (*new_cookies < 8 && rcpt.new_cookie[*new_cookies].iov_base) {
                                 (*new_cookies)++;
                         }
                 }
-                memcpy(cfg->cookie.data, rcpt.new_cookie->data, rcpt.new_cookie->length);
-                cfg->cookie.length = rcpt.new_cookie->length;
+                memcpy(cfg->cookie.iov_base, rcpt.new_cookie->iov_base, rcpt.new_cookie->iov_len);
+                cfg->cookie.iov_len = rcpt.new_cookie->iov_len;
         }
 
         /* perform the calculation */

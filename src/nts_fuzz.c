@@ -32,13 +32,13 @@ int main(int argc, char **argv) {
                 struct NTS_Agreement rec;
                 if (NTS_decode_response(buffer, len, &rec) == 0) {
                         for (int i = 0; i < 8; i++)
-                                eat(rec.cookie[i].data, rec.cookie[i].length);
+                                eat(rec.cookie[i].iov_base, rec.cookie[i].iov_len);
                 }
         } else {
                 struct NTS_Receipt rcpt = { 0, };
                 if (NTS_parse_extension_fields(buffer, len, &nts, &rcpt)) {
                         for (int i = 0; i < 8; i++)
-                                eat(rcpt.new_cookie[i].data, rcpt.new_cookie[i].length);
+                                eat(rcpt.new_cookie[i].iov_base, rcpt.new_cookie[i].iov_len);
                         eat(*rcpt.identifier, 32);
                 }
         }

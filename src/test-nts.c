@@ -36,15 +36,15 @@ static void encode_ptr_len_data(
 
 TEST(nts_encoding) {
         uint8_t buffer[1000];
-        struct NTS_Agreement rec;
+        NTS_Agreement rec;
 
         NTS_encode_request(buffer, sizeof buffer, NULL);
         assert_se(NTS_decode_response(buffer, 1000, &rec) == 0);
         assert_se(rec.error == NTS_SUCCESS);
         assert_se(rec.ntp_server == NULL);
         assert_se(rec.ntp_port == 0);
-        assert_se(rec.cookie[0].data == NULL);
-        assert_se(rec.cookie[0].length == 0);
+        assert_se(rec.cookie[0].iov_base == NULL);
+        assert_se(rec.cookie[0].iov_len == 0);
         assert_se(rec.aead_id == NTS_AEAD_AES_SIV_CMAC_256);
 
         uint16_t proto1[] = { NTS_AEAD_AES_SIV_CMAC_256, NTS_AEAD_AES_SIV_CMAC_512, 0 };
@@ -53,8 +53,8 @@ TEST(nts_encoding) {
         assert_se(rec.error == NTS_SUCCESS);
         assert_se(rec.ntp_server == NULL);
         assert_se(rec.ntp_port == 0);
-        assert_se(rec.cookie[0].data == NULL);
-        assert_se(rec.cookie[0].length == 0);
+        assert_se(rec.cookie[0].iov_base == NULL);
+        assert_se(rec.cookie[0].iov_len == 0);
         assert_se(rec.aead_id == NTS_AEAD_AES_SIV_CMAC_256);
 
         uint16_t proto2[] = { NTS_AEAD_AES_SIV_CMAC_512, NTS_AEAD_AES_SIV_CMAC_256, 0 };
@@ -63,14 +63,14 @@ TEST(nts_encoding) {
         assert_se(rec.error == NTS_SUCCESS);
         assert_se(rec.ntp_server == NULL);
         assert_se(rec.ntp_port == 0);
-        assert_se(rec.cookie[0].data == NULL);
-        assert_se(rec.cookie[0].length == 0);
+        assert_se(rec.cookie[0].iov_base == NULL);
+        assert_se(rec.cookie[0].iov_len == 0);
         assert_se(rec.aead_id == NTS_AEAD_AES_SIV_CMAC_512);
 }
 
 TEST(nts_decoding) {
         uint8_t buffer[0x10000], *p;
-        struct NTS_Agreement rec;
+        NTS_Agreement rec;
 
         /* empty */
         uint8_t value[2] = {};
@@ -143,12 +143,12 @@ TEST(nts_decoding) {
         assert_se(rec.aead_id == 15);
         assert_se(rec.ntp_port == 42);
         assert_se(strcmp(rec.ntp_server, "localhost") == 0);
-        assert_se(memcmp(rec.cookie[0].data, "COOKIE1", rec.cookie[0].length) == 0);
-        assert_se(memcmp(rec.cookie[1].data, "COOKIE22", rec.cookie[1].length) == 0);
-        assert_se(memcmp(rec.cookie[2].data, "COOKIE333", rec.cookie[2].length) == 0);
-        assert_se(memcmp(rec.cookie[3].data, "COOKIE4444", rec.cookie[3].length) == 0);
-        assert_se(rec.cookie[4].data == NULL);
-        assert_se(rec.cookie[4].length == 0);
+        assert_se(memcmp(rec.cookie[0].iov_base, "COOKIE1", rec.cookie[0].iov_len) == 0);
+        assert_se(memcmp(rec.cookie[1].iov_base, "COOKIE22", rec.cookie[1].iov_len) == 0);
+        assert_se(memcmp(rec.cookie[2].iov_base, "COOKIE333", rec.cookie[2].iov_len) == 0);
+        assert_se(memcmp(rec.cookie[3].iov_base, "COOKIE4444", rec.cookie[3].iov_len) == 0);
+        assert_se(rec.cookie[4].iov_base == NULL);
+        assert_se(rec.cookie[4].iov_len == 0);
 }
 
 TEST(ntp_field_encoding) {
@@ -158,19 +158,19 @@ TEST(ntp_field_encoding) {
         uint8_t identifier[32] = {};
         char cookie[] = "PAD";
 
-        struct NTS_Query nts = {
+        NTS_Query nts = {
                 { (uint8_t*)cookie, strlen(cookie) },
                 key,
                 key,
                 *NTS_get_param(NTS_AEAD_AES_SIV_CMAC_256),
         };
 
-        struct NTS_Receipt rcpt = {};
+        NTS_Receipt rcpt = {};
         int len = NTS_add_extension_fields(buffer, &nts, &identifier);
         assert_se(len > 48);
         assert_se(NTS_parse_extension_fields(buffer, len, &nts, &rcpt));
 
-        assert_se(rcpt.new_cookie->data == NULL);
+        assert_se(rcpt.new_cookie->iov_base == NULL);
         assert_se(memcmp(buffer + 48 + 36 + 4, cookie, strlen(cookie)) == 0);
         assert_se(strcmp((char*)buffer + 48 + 36 + 4, cookie) == 0);
 
@@ -178,20 +178,20 @@ TEST(ntp_field_encoding) {
                 zero(rcpt);
                 len = NTS_add_extension_fields(buffer, &nts, &identifier);
                 buffer[i] ^= 0x20;
-                assert_se(!NTS_parse_extension_fields(buffer, len, &nts, &rcpt));
+                assert_se(NTS_parse_extension_fields(buffer, len, &nts, &rcpt) < 0);
         }
 
         zero(rcpt);
         len = NTS_add_extension_fields(buffer, &nts, &identifier);
         nts.s2c_key = (uint8_t[32]){ 1, };
-        assert_se(!NTS_parse_extension_fields(buffer, len, &nts, &rcpt));
+        assert_se(NTS_parse_extension_fields(buffer, len, &nts, &rcpt) < 0);
 }
 
 #if HAVE_OPENSSL
 static void add_encrypted_server_hdr(
                 uint8_t *buffer,
                 uint8_t **p_ptr,
-                struct NTS_Query nts,
+                NTS_Query nts,
                 const char *cookie[],
                 uint8_t *corrupt) {
 
@@ -238,7 +238,7 @@ TEST(ntp_field_decoding) {
         char cookie[] = "COOKIE", cakey[] = "CAKEY";
         uint8_t key[32] = {};
 
-        struct NTS_Query nts = {
+        NTS_Query nts = {
                 { (uint8_t*)cookie, strlen(cookie) },
                 key,
                 key,
@@ -254,17 +254,17 @@ TEST(ntp_field_decoding) {
         encode_record_raw_ext(&p, 0x0104, ident, 32);
         add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, cakey, NULL}, NULL);
 
-        struct NTS_Receipt rcpt = {};
+        NTS_Receipt rcpt = {};
         assert_se(NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt));
 
         assert_se(memcmp(rcpt.identifier, ident, 32) == 0);
-        assert_se(rcpt.new_cookie[0].data != NULL);
-        assert_se(rcpt.new_cookie[0].length >= strlen(cookie));
-        assert_se(memcmp(rcpt.new_cookie[0].data, cookie, strlen(cookie)) == 0);
-        assert_se(rcpt.new_cookie[1].data != NULL);
-        assert_se(rcpt.new_cookie[1].length >= strlen(cakey));
-        assert_se(memcmp(rcpt.new_cookie[1].data, cakey, strlen(cakey)) == 0);
-        assert_se(rcpt.new_cookie[2].data == NULL);
+        assert_se(rcpt.new_cookie[0].iov_base != NULL);
+        assert_se(rcpt.new_cookie[0].iov_len >= strlen(cookie));
+        assert_se(memcmp(rcpt.new_cookie[0].iov_base, cookie, strlen(cookie)) == 0);
+        assert_se(rcpt.new_cookie[1].iov_base != NULL);
+        assert_se(rcpt.new_cookie[1].iov_len >= strlen(cakey));
+        assert_se(memcmp(rcpt.new_cookie[1].iov_base, cakey, strlen(cakey)) == 0);
+        assert_se(rcpt.new_cookie[2].iov_base == NULL);
 
         /* same test but no authentication of uniq id */
         p = buffer + 48;
@@ -272,13 +272,13 @@ TEST(ntp_field_decoding) {
         encode_record_raw_ext(&p, 0x0104, ident, 32);
 
         zero(rcpt);
-        assert_se(!NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt));
+        assert_se(NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt) < 0);
 
         /* no authentication at all */
         p = buffer + 48;
         encode_record_raw(&p, 0x0104, ident, 32);
         zero(rcpt);
-        assert_se(!NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt));
+        assert_se(NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt) < 0);
 
         /* malicious unencrypted field */
         p = buffer + 48;
@@ -286,7 +286,7 @@ TEST(ntp_field_decoding) {
         add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, NULL}, NULL);
         buffer[48+2] = 0xee;
         zero(rcpt);
-        assert_se(!NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt));
+        assert_se(NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt) < 0);
 
         /* malicious encrypted field */
         p = buffer + 48;
@@ -296,7 +296,7 @@ TEST(ntp_field_decoding) {
         add_encrypted_server_hdr(buffer, &p, nts, (const char*[]){cookie, NULL}, p+34);
 
         zero(rcpt);
-        assert_se(!NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt));
+        assert_se(NTS_parse_extension_fields(buffer, p - buffer, &nts, &rcpt) < 0);
 }
 #endif
 

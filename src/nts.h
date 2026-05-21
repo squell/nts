@@ -1,4 +1,5 @@
 /* SPDX-License-Identifier: LGPL-2.1-or-later */
+
 #pragma once
 
 #include <errno.h>
@@ -6,24 +7,22 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 
-/* algorithm type is not made into a full enum since it eases ptr-conversions */
+#include "nts_definitions.h"
+
+typedef uint16_t NTS_RecordType;
 typedef uint16_t NTS_AEADAlgorithmType;
-enum {
-        NTS_AEAD_AES_SIV_CMAC_256 = 15,
-        NTS_AEAD_AES_SIV_CMAC_384 = 16,
-        NTS_AEAD_AES_SIV_CMAC_512 = 17,
-        NTS_AEAD_AES_128_GCM_SIV  = 30,
-        NTS_AEAD_AES_256_GCM_SIV  = 31,
-        _NTS_AEAD_MAX,
-        _NTS_AEAD_INVALID = -EINVAL,
-};
+typedef uint16_t NTS_ProtocolType;
 
 typedef struct NTS_AEADParam {
-        uint8_t aead_id, key_size, block_size, nonce_size;
+        NTS_AEADAlgorithmType aead_id;
+        uint8_t key_size, block_size, nonce_size;
         bool tag_first, nonce_is_iv;
         const char *cipher_name;
 } NTS_AEADParam;
+
+typedef uint8_t NTS_Identifier[32];
 
 typedef enum NTS_ErrorType {
         NTS_SERVER_UNKNOWN_CRIT_RECORD = 0,
@@ -44,20 +43,17 @@ typedef enum NTS_ErrorType {
         _NTS_ERROR_INVALID = -EINVAL,
 } NTS_ErrorType;
 
-typedef struct NTS_Cookie {
-        uint8_t *data;
-        size_t length;
-} NTS_Cookie;
+typedef struct iovec NTS_Cookie;
 
 typedef struct NTS_Agreement {
-        enum NTS_ErrorType error;
+        NTS_ErrorType error;
 
         NTS_AEADAlgorithmType aead_id;
 
         const char *ntp_server;
         uint16_t ntp_port;
 
-        struct NTS_Cookie cookie[8];
+        NTS_Cookie cookie[8];
 } NTS_Agreement;
 
 /* Encode a NTS KE request in the buffer of the provided size. If the third argument is not NULL,
@@ -70,17 +66,24 @@ typedef struct NTS_Agreement {
  */
 int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEADAlgorithmType *preferred_crypto);
 
-/* Decode a NTS KE reponse in the buffer of the provided size, and write the result to the NTS_reponse
- * struct.
+/* Decode a NTS KE reponse in the buffer of the provided size, and write the result to the NTS_Agreement
+ * struct. This function does not allocate data: pointers in the struct for a potential negotiated server
+ * name and NTS cookies point into buffer, and must be copied if buffer is deallocated or overwritten.
+ *
+ * Upon success, the input buffer may have been modified by the decoding process, so any writes to it
+ * after that can cause undefined behaviour.
+ *
+ * If this function returns failure, the input buffer is NOT modified (and so can be extended when more
+ * input has been received, and then NTS_decode_response can be retried)
  *
  * RETURNS
  *      0 upon success
  *      negative upon failure (writes the error code to NTS_Agreement->error)
  */
-int NTS_decode_response(uint8_t *buffer, size_t buf_size, struct NTS_Agreement *response);
+int NTS_decode_response(uint8_t *buffer, size_t buf_size, NTS_Agreement *response);
 
 /* Convert a NTS_ErrorType to a string */
-const char *NTS_error_string(enum NTS_ErrorType error);
+const char *NTS_error_string(NTS_ErrorType error);
 
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes
@@ -88,7 +91,7 @@ const char *NTS_error_string(enum NTS_ErrorType error);
  * - Fetched EVP_CIPHER for the AEAD algorithm (when SIV is provided by OpenSSL only)
  */
 
-const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id);
+const NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id);
 
 /* An opaque type that represents the underlying TLS session */
 typedef struct NTS_TLS NTS_TLS;
@@ -103,14 +106,14 @@ typedef struct NTS_TLS NTS_TLS;
  *              -ENOBUFS not enough space in buffer
  *              -EINVAL  unkown AEAD
  */
-int NTS_TLS_extract_keys(NTS_TLS *session, NTS_AEADAlgorithmType aead, uint8_t *c2s, uint8_t *s2c, int key_capacity);
+int NTS_TLS_extract_keys(NTS_TLS *session, NTS_AEADAlgorithmType aead, uint8_t *ret_c2s, uint8_t *ret_s2c, size_t key_capacity);
 
 /* Setup a ready-to-use TLS session for hostname, on the connected socket, ready to begin a TLS handshake.
  *
  * RETURNS
  *      A pointer to a ready-to-use TLS session, NULL upon failure (and then the error is stored in NTS_TLS_error)
  */
-NTS_TLS* NTS_TLS_setup(const char *hostname, int socket);
+NTS_TLS* NTS_TLS_setup(const char *hostname, int socket_fd);
 
 /* Perform a TLS handshake
  *
@@ -128,7 +131,7 @@ int NTS_TLS_handshake(NTS_TLS *session);
  * RETURNS
  *      Nothing
  */
-void NTS_TLS_close(NTS_TLS **session);
+NTS_TLS* NTS_TLS_free(NTS_TLS *session);
 
 /* Reading and writing data
  *

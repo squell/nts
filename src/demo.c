@@ -126,14 +126,14 @@ retry:
                 char template[] = "X-cookie";
                 for (int i=0; i < 8; i++) {
                         printf("cookie%d: ", i+1);
-                        if (NTS.cookie[i].data) {
-                                for (size_t n=0; n < NTS.cookie[i].length; n++)
-                                                printf("%02x", NTS.cookie[i].data[n]);
+                        if (NTS.cookie[i].iov_base) {
+                                for (size_t n=0; n < NTS.cookie[i].iov_len; n++)
+                                                printf("%02x", ((unsigned char*)NTS.cookie[i].iov_base)[n]);
 
                                 *template = '0' + i;
                                 FILE *f = fopen(template, "wb");
                                 assert(f);
-                                fwrite(NTS.cookie[i].data, NTS.cookie[i].length, 1, f);
+                                fwrite(NTS.cookie[i].iov_base, NTS.cookie[i].iov_len, 1, f);
                                 fclose(f);
                         } else {
                                 printf("<absent>");
@@ -160,7 +160,7 @@ retry:
                 assert(!"could not read response");
         }
 
-        NTS_TLS_close(&tls);
+        NTS_TLS_free(tls);
 
         if(false) {
 skip_ke:
@@ -173,7 +173,7 @@ skip_ke:
                         .cipher = *NTS_get_param(*pref_arr),
                         .c2s_key = c2s,
                         .s2c_key = s2c,
-                        .cookie = (struct NTS_Cookie) { .data = cookie, .length = cookie_len },
+                        .cookie = (struct iovec) { .iov_base = cookie, .iov_len = cookie_len },
                 };
                 fread(c2s, 64, 1, key);
                 fread(s2c, 64, 1, key);
@@ -183,8 +183,8 @@ skip_ke:
         int count;
         nts_poll(hostname, ntp_port, &nts, &delay, &offset, &count);
         printf("cookie*: ");
-        for (size_t i=0; i < nts.cookie.length; i++)
-                printf("%02x", nts.cookie.data[i]);
+        for (size_t i=0; i < nts.cookie.iov_len; i++)
+                printf("%02x", ((unsigned char*)nts.cookie.iov_base)[i]);
         printf("\n");
         assert(count <= nts.extra_cookies+1);
         printf("fresh cookies: %d%s\n", count, (count<nts.extra_cookies+1)? " (LESS THAN REQUESTED)" : "");
@@ -194,6 +194,6 @@ skip_ke:
         return 0;
 end:
 
-        NTS_TLS_close(&tls);
+        NTS_TLS_free(tls);
         return -1;
 }

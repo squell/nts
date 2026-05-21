@@ -25,19 +25,19 @@ else
   $(error "CRYPTO must be either 'openssl', 'gcrypt', 'libaes_siv' or 'nettle'")
 endif
 
-demo: demo_$(TLS).o nts_packet.o nts_$(TLS).o nts_error.o sntp.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
+demo: demo_$(TLS).o nts_packet.o nts_$(TLS).o nts_error.o sntp.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o defs.o
 	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
-qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o
-	$(CC) $+ -o $@
+qdntp: qdntp.o sntp.o nts_extfields.o tcp_connect.o defs.o
+	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
-nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o
-	$(CC) $+ $(LINK) -lcrypto -o $@
+nts_test: nts_packet.o nts_extfields.o test-nts.o nts_crypto_$(CRYPTO).o defs.o
+	$(CC) $+ $(LINK) $(FINAL_LINK) -lcrypto -o $@
 
-nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o fuzz-nullcipher.o
-	$(CC) $+ $(CFLAGS) -o $@
+nts_fuzz: nts_packet.o nts_extfields.o nts_fuzz.o fuzz-nullcipher.o defs.o
+	$(CC) $+ $(LINK) $(FINAL_LINK) $(CFLAGS) -o $@
 
-dummy-server: test-nts-mockserver.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o
+dummy-server: test-nts-mockserver.o nts_packet.o nts_$(TLS).o nts_error.o nts_extfields.o nts_crypto_$(CRYPTO).o tcp_connect.o defs.o
 	$(CC) $+ $(LINK) $(FINAL_LINK) -o $@
 
 test: nts_test

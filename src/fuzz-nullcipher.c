@@ -1,9 +1,7 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
-
+#include <assert.h>
 #include <string.h>
 
 #include "nts_crypto.h"
-#include "timesyncd-forward.h"
 
 /* Null cipher, to let the fuzzer also generate meaningful inputs for
  * the encrypted extension fields */
@@ -14,7 +12,7 @@ int NTS_encrypt(uint8_t *ctxt,
                 size_t ctxt_len,
                 const uint8_t *ptxt,
                 size_t ptxt_len,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
@@ -34,7 +32,7 @@ int NTS_decrypt(uint8_t *ptxt,
                 size_t ptxt_len,
                 const uint8_t *ctxt,
                 size_t ctxt_len,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 const uint8_t *key) {
 

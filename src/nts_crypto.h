@@ -1,11 +1,12 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
-
 #pragma once
 
 #include "nts.h"
 #include "nts_extfields.h"
 
-typedef struct iovec AssociatedData;
+struct AssociatedData {
+        uint8_t *data;
+        size_t length;
+};
 
 /* encrypt the data in ptxt of ptxt_len bytes, and write it to ctxt, using the selected cryptoscheme and key
  * the associated data should point to an array of NULL-terminated chunks of associated data
@@ -18,7 +19,7 @@ int NTS_encrypt(uint8_t *ctxt,
                 size_t ctxt_len,
                 const uint8_t *ptxt,
                 size_t ptxt_len,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 const uint8_t *key);
 
@@ -35,6 +36,6 @@ int NTS_decrypt(uint8_t *ptxt,
                 size_t ptxt_len,
                 const uint8_t *ctxt,
                 size_t ctxt_len,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 const uint8_t *key);

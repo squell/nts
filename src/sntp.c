@@ -7,7 +7,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <endian.h>
+#include <arpa/inet.h>
 
 #include "sntp.h"
 #include "nts_extfields.h"
@@ -39,6 +39,15 @@ static uint64_t get_current_ntp_time(void) {
 
 int NTS_attach_socket(const char *host, int port, int type);
 
+static uint64_t byte_order(uint64_t value) {
+        uint32_t hi = htonl(value >> 32);
+        uint32_t lo = htonl(value & 0xFFFFFFFF);
+        unsigned char *bytes = (void*) &value;
+        memcpy(bytes + 0, &hi, 4);
+        memcpy(bytes + 4, &lo, 4);
+        return value;
+}
+
 void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtrip_delay, double *time_offset, int *new_cookies) {
         struct ntp_packet packet = { 043, };
 
@@ -47,7 +56,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
 
         /* take time measurement and send NTP packet */
         uint64_t start;
-        packet.timestamp[3] = htobe64(start = get_current_ntp_time());
+        packet.timestamp[3] = byte_order(start = get_current_ntp_time());
 
         unsigned char buf[1280];
         memcpy(buf, &packet, sizeof(packet));
@@ -70,7 +79,7 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 printf("Kiss of death: %.4s\n", packet.reference_id);
 
         assert(packet.stratum != 0);
-        assert(start == be64toh(packet.timestamp[1]));
+        assert(start == byte_order(packet.timestamp[1]));
 
         if (cfg) {
                 assert(n > 48);
@@ -78,24 +87,24 @@ void nts_poll(const char *host, int port, struct NTS_Query *cfg, double *roundtr
                 assert(NTS_parse_extension_fields(buf, n, cfg, &rcpt));
                 assert(rcpt.identifier);
                 assert(memcmp(rcpt.identifier, unique, 32) == 0);
-                assert(rcpt.new_cookie->iov_base);
-                assert(rcpt.new_cookie->iov_len <= cfg->cookie.iov_len);
+                assert(rcpt.new_cookie->data);
+                assert(rcpt.new_cookie->length <= cfg->cookie.length);
                 if (new_cookies) {
                         *new_cookies = 0;
-                        while (*new_cookies < 8 && rcpt.new_cookie[*new_cookies].iov_base) {
+                        while (*new_cookies < 8 && rcpt.new_cookie[*new_cookies].data) {
                                 (*new_cookies)++;
                         }
                 }
-                memcpy(cfg->cookie.iov_base, rcpt.new_cookie->iov_base, rcpt.new_cookie->iov_len);
-                cfg->cookie.iov_len = rcpt.new_cookie->iov_len;
+                memcpy(cfg->cookie.data, rcpt.new_cookie->data, rcpt.new_cookie->length);
+                cfg->cookie.length = rcpt.new_cookie->length;
         }
 
         /* perform the calculation */
         long double stamps[5] = { 0, }, *T = stamps;
 
         T[1] = start;
-        T[2] = be64toh(packet.timestamp[2]);
-        T[3] = be64toh(packet.timestamp[3]);
+        T[2] = byte_order(packet.timestamp[2]);
+        T[3] = byte_order(packet.timestamp[3]);
         T[4] = get_current_ntp_time();
 
         long double d = (T[4] - T[1]) - (T[3] - T[2]);

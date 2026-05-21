@@ -1,11 +1,9 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
-
 #include <assert.h>
 #include <syslog.h>
+#include <openssl/evp.h>
+#include <openssl/opensslv.h>
 
-#include "crypto-util.h"
 #include "nts_crypto.h"
-#include "timesyncd-forward.h"
 
 #if !OPENSSL_VERSION_PREREQ(3,0)
 #    error Your OpenSSL version does not support SIV modes, need at least version 3.0.
@@ -26,9 +24,9 @@ static const NTS_AEADParam supported_algos[] = {
 };
 
 const NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
-        FOREACH_ELEMENT(algo, supported_algos)
-                if (algo->aead_id == id)
-                        return algo;
+        for (size_t i = 0; i < ELEMENTSOF(supported_algos); i++)
+                if (supported_algos[i].aead_id == id)
+                        return &supported_algos[i];
 
         return NULL;
 }
@@ -54,7 +52,7 @@ typedef int EVP_CryptUpdate_func(
 
 static bool process_assoc_data(
                 EVP_CIPHER_CTX *state,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 EVP_CryptInit_func CryptInit_ex,
                 EVP_CryptUpdate_func CryptUpdate) {
@@ -66,31 +64,31 @@ static bool process_assoc_data(
         assert(aead);
 
         /* process the associated data and nonce first */
-        const AssociatedData *last = NULL;
+        const struct AssociatedData *last = NULL;
         if (aead->nonce_is_iv) {
                 /* workaround for the OpenSSL GCM-SIV interface, where the IV is set directly in
                  * contradiction to the documentation;
                  * our interface *does* interpret the last AAD item as the siv/nonce
                  */
-                assert(info->iov_base);
-                for (last = info; (last+1)->iov_base != NULL; )
+                assert(info->data);
+                for (last = info; (last+1)->data != NULL; )
                         last++;
 
-                if (last->iov_len != aead->nonce_size)
+                if (last->length != aead->nonce_size)
                         goto exit;
 
-                r = CryptInit_ex(state, NULL, NULL, NULL, last->iov_base);
+                r = CryptInit_ex(state, NULL, NULL, NULL, last->data);
                 if (r == 0)
                         goto exit;
         }
 
-        for ( ; info->iov_base && info != last; info++) {
+        for ( ; info->data && info != last; info++) {
                 int len = 0;
-                r = CryptUpdate(state, NULL, &len, info->iov_base, info->iov_len);
+                r = CryptUpdate(state, NULL, &len, info->data, info->length);
                 if (r == 0)
                         goto exit;
 
-                assert((size_t)len == info->iov_len);
+                assert((size_t)len == info->length);
         }
 
         return true;
@@ -102,7 +100,7 @@ int NTS_encrypt(uint8_t *ctxt,
                 size_t ctxt_len,
                 const uint8_t *ptxt,
                 size_t ptxt_len,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
@@ -117,23 +115,19 @@ int NTS_encrypt(uint8_t *ctxt,
         assert(aead);
         assert(key);
 
-        r = dlopen_libcrypto(LOG_ERR);
-        if (r < 0)
-                return r;
-
-        _cleanup_(EVP_CIPHER_freep) EVP_CIPHER *cipher = NULL;
-        _cleanup_(EVP_CIPHER_CTX_freep) EVP_CIPHER_CTX *state = sym_EVP_CIPHER_CTX_new();
+        EVP_CIPHER *cipher = NULL;
+        EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
         if (!state)
                 return -ENOMEM;
 
-        cipher = sym_EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL);
+        cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL);
         if (!cipher)
-                return -EINVAL;
+                return EVP_CIPHER_CTX_free(state), -EINVAL;
 
         /* check that the ciphertext length is large enough */
         assert(ptxt_len <= SIZE_MAX - aead->block_size);
         if (ctxt_len < ptxt_len + aead->block_size)
-                return -ENOMEM;
+                return EVP_CIPHER_free(cipher), EVP_CIPHER_CTX_free(state), -ENOMEM;
 
         uint8_t *ctxt_start = ctxt;
         uint8_t *tag;
@@ -143,43 +137,48 @@ int NTS_encrypt(uint8_t *ctxt,
         } else
                 tag = ctxt + ptxt_len;
 
-        r = sym_EVP_EncryptInit_ex(state, cipher, NULL, key, NULL);
+        r = EVP_EncryptInit_ex(state, cipher, NULL, key, NULL);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
-        r = process_assoc_data(state, info, aead, sym_EVP_EncryptInit_ex, sym_EVP_EncryptUpdate);
+        r = process_assoc_data(state, info, aead, EVP_EncryptInit_ex, EVP_EncryptUpdate);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         /* encrypt data */
-        r = sym_EVP_EncryptUpdate(state, ctxt, &len, ptxt, ptxt_len);
+        r = EVP_EncryptUpdate(state, ctxt, &len, ptxt, ptxt_len);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         assert(len <= (int) ptxt_len);
         ctxt += len;
 
-        r = sym_EVP_EncryptFinal_ex(state, ctxt, &len);
+        r = EVP_EncryptFinal_ex(state, ctxt, &len);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         assert(len <= aead->block_size);
         ctxt += len;
         assert(ctxt - ctxt_start == (ptrdiff_t) ptxt_len + aead->tag_first * aead->block_size);
 
         /* append/prepend the AEAD tag */
-        r = sym_EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, aead->block_size, tag);
+        r = EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_GET_TAG, aead->block_size, tag);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         return ptxt_len + aead->block_size;
+
+invalid:
+        EVP_CIPHER_free(cipher);
+        EVP_CIPHER_CTX_free(state);
+        return -EINVAL;
 }
 
 int NTS_decrypt(uint8_t *ptxt,
                 size_t ptxt_len,
                 const uint8_t *ctxt,
                 size_t ctxt_len,
-                const AssociatedData *info,
+                const struct AssociatedData *info,
                 const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
@@ -194,12 +193,8 @@ int NTS_decrypt(uint8_t *ptxt,
         assert(aead);
         assert(key);
 
-        r = dlopen_libcrypto(LOG_ERR);
-        if (r < 0)
-                return r;
-
-        _cleanup_(EVP_CIPHER_freep) EVP_CIPHER *cipher = NULL;
-        _cleanup_(EVP_CIPHER_CTX_freep) EVP_CIPHER_CTX *state = sym_EVP_CIPHER_CTX_new();
+        EVP_CIPHER *cipher = NULL;
+        EVP_CIPHER_CTX *state = EVP_CIPHER_CTX_new();
         if (!state)
                 return -ENOMEM;
 
@@ -207,9 +202,9 @@ int NTS_decrypt(uint8_t *ptxt,
         if (ctxt_len < aead->block_size || ptxt_len < ctxt_len - aead->block_size)
                 return -ENOMEM;
 
-        cipher = sym_EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL);
+        cipher = EVP_CIPHER_fetch(NULL, aead->cipher_name, NULL);
         if (!cipher)
-                return -EINVAL;
+                return EVP_CIPHER_CTX_free(state), -EINVAL;
 
         /* set the AEAD tag */
         const uint8_t *tag;
@@ -221,31 +216,31 @@ int NTS_decrypt(uint8_t *ptxt,
 
         ctxt_len -= aead->block_size;
 
-        r = sym_EVP_DecryptInit_ex(state, cipher, NULL, key, NULL);
+        r = EVP_DecryptInit_ex(state, cipher, NULL, key, NULL);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
-        r = sym_EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (uint8_t*)tag);
+        r = EVP_CIPHER_CTX_ctrl(state, EVP_CTRL_AEAD_SET_TAG, aead->block_size, (uint8_t*)tag);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
-        r = process_assoc_data(state, info, aead, sym_EVP_DecryptInit_ex, sym_EVP_DecryptUpdate);
+        r = process_assoc_data(state, info, aead, EVP_DecryptInit_ex, EVP_DecryptUpdate);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         uint8_t *ptxt_start = ptxt;
 
         /* decrypt data */
-        r = sym_EVP_DecryptUpdate(state, ptxt, &len, ctxt, ctxt_len);
+        r = EVP_DecryptUpdate(state, ptxt, &len, ctxt, ctxt_len);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         assert(len <= (int) ctxt_len);
         ptxt += len;
 
-        r = sym_EVP_DecryptFinal_ex(state, ptxt, &len);
+        r = EVP_DecryptFinal_ex(state, ptxt, &len);
         if (r == 0)
-                return -EINVAL;
+                goto invalid;
 
         assert(len <= aead->block_size);
         ptxt += len;
@@ -253,4 +248,9 @@ int NTS_decrypt(uint8_t *ptxt,
         assert(ptxt - ptxt_start == (ptrdiff_t) ctxt_len);
 
         return ctxt_len;
+
+invalid:
+        EVP_CIPHER_free(cipher);
+        EVP_CIPHER_CTX_free(state);
+        return -EINVAL;
 }

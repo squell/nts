@@ -1,5 +1,3 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
-
 #pragma once
 
 #define NTS_MAX_PACKET_SIZE 1280

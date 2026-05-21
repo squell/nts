@@ -1,5 +1,3 @@
-/* SPDX-License-Identifier: LGPL-2.1-or-later */
-
 #pragma once
 
 #include <errno.h>
@@ -7,7 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include <sys/uio.h>
 
 #include "nts_definitions.h"
 
@@ -24,7 +21,7 @@ typedef struct NTS_AEADParam {
 
 typedef uint8_t NTS_Identifier[32];
 
-typedef enum NTS_ErrorType {
+enum NTS_ErrorType {
         NTS_SERVER_UNKNOWN_CRIT_RECORD = 0,
         NTS_SERVER_BAD_REQUEST = 1,
         NTS_SERVER_INTERNAL_ERROR = 2,
@@ -38,15 +35,15 @@ typedef enum NTS_ErrorType {
         NTS_UNKNOWN_CRIT_RECORD = 0x10006,
 
         NTS_SUCCESS = 0x20000,
+};
 
-        _NTS_ERROR_MAX,
-        _NTS_ERROR_INVALID = -EINVAL,
-} NTS_ErrorType;
-
-typedef struct iovec NTS_Cookie;
+typedef struct NTS_Cookie {
+        uint8_t *data;
+        size_t length;
+} NTS_Cookie;
 
 typedef struct NTS_Agreement {
-        NTS_ErrorType error;
+        enum NTS_ErrorType error;
 
         NTS_AEADAlgorithmType aead_id;
 
@@ -83,7 +80,7 @@ int NTS_encode_request(uint8_t *buffer, size_t buf_size, const NTS_AEADAlgorithm
 int NTS_decode_response(uint8_t *buffer, size_t buf_size, NTS_Agreement *response);
 
 /* Convert a NTS_ErrorType to a string */
-const char *NTS_error_string(NTS_ErrorType error);
+const char *NTS_error_string(enum NTS_ErrorType error);
 
 /* The following three functions provide runtime information about the chosen AEAD algorithm:
  * - key size requirement in bytes
@@ -106,7 +103,7 @@ typedef struct NTS_TLS NTS_TLS;
  *              -ENOBUFS not enough space in buffer
  *              -EINVAL  unkown AEAD
  */
-int NTS_TLS_extract_keys(NTS_TLS *session, NTS_AEADAlgorithmType aead, uint8_t *ret_c2s, uint8_t *ret_s2c, size_t key_capacity);
+int NTS_TLS_extract_keys(NTS_TLS *session, NTS_AEADAlgorithmType aead, uint8_t *c2s, uint8_t *s2c, size_t key_capacity);
 
 /* Setup a ready-to-use TLS session for hostname, on the connected socket, ready to begin a TLS handshake.
  *
@@ -142,3 +139,5 @@ NTS_TLS* NTS_TLS_free(NTS_TLS *session);
  */
 ssize_t NTS_TLS_write(NTS_TLS *session, const void *buffer, size_t size);
 ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size);
+
+#define ELEMENTSOF(x) (sizeof (x)/sizeof *(x))

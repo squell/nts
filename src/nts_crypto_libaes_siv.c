@@ -25,17 +25,21 @@ const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
 #define CHECK(expr) if (expr); else goto exit;
 
 int NTS_encrypt(uint8_t *ctxt,
+                size_t ctxt_len,
                 const uint8_t *ptxt,
-                int ptxt_len,
-                const AssociatedData *info,
-                const struct NTS_AEADParam *aead,
+                size_t ptxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;
-        const int BLKSIZ = 16;
+        const size_t BLKSIZ = 16;
 
         AES_SIV_CTX *state = AES_SIV_CTX_new();
         CHECK(state);
+
+        CHECK(ctxt_len >= aead->block_size);
+        CHECK(ctxt_len - aead->block_size >= ptxt_len);
 
         CHECK(AES_SIV_Init(state, key, aead->key_size));
 
@@ -55,18 +59,21 @@ exit:
 }
 
 int NTS_decrypt(uint8_t *ptxt,
+                size_t ptxt_len,
                 const uint8_t *ctxt,
-                int ctxt_len,
-                const AssociatedData *info,
-                const struct NTS_AEADParam *aead,
+                size_t ctxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;
-        const int BLKSIZ = 16;
+        const size_t BLKSIZ = 16;
 
         AES_SIV_CTX *state = AES_SIV_CTX_new();
         CHECK(state);
+
         CHECK(ctxt_len >= BLKSIZ);
+        CHECK(ctxt_len - BLKSIZ <= ptxt_len);
 
         CHECK(AES_SIV_Init(state, key, aead->key_size));
         ctxt += BLKSIZ;

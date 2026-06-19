@@ -3,37 +3,39 @@
 #include "nts.h"
 
 typedef struct NTS_Query {
-        struct NTS_Cookie cookie;
+        NTS_Cookie cookie;
         const uint8_t *c2s_key, *s2c_key;
-        struct NTS_AEADParam cipher;
+        NTS_AEADParam cipher;
         uint8_t extra_cookies;
 } NTS_Query;
 
 typedef struct NTS_Receipt {
-        uint8_t (*identifier)[32];
-        struct NTS_Cookie new_cookie[8];
+        NTS_Identifier *identifier;
+        NTS_Cookie new_cookie[8];
 } NTS_Receipt;
 
 /* Render NTP extension fields in the provided buffer based on the configuration in the NTS struct.
- * If identifier is not NULL, it will hold the generated unique identifier upon success.
+ * The identifier must point to a buffer that will hold a generated unique identifier upon success.
  *
  * RETURNS
- *      The amount of data encoded in bytes (including NTP packet size). Zero bytes encoded indicates an error (in which case the
- *      contents of uniq_ident are unspecified)
+ *      The amount of data encoded in bytes (including NTP packet size).
+ *      A negative result indicates an error (in which case the contents of uniq_ident are unspecified)
  */
 int NTS_add_extension_fields(
-                uint8_t (*dest)[1280],
-                const struct NTS_Query *nts,
-                uint8_t (*identifier)[32]);
+                uint8_t dest[static NTS_MAX_PACKET_SIZE],
+                const NTS_Query *nts,
+                NTS_Identifier *identifier);
 
 /* Processed the NTP extension fields in the provided buffer based on the configuration in the NTS struct,
- * and make this information available in the NTS_Receipt struct.
+ * and make this information available in the NTS_Receipt struct. The identifier and cookies in NTS_Receipt
+ * all point into the given src buffer, so the caller must make copies if they are to live longer than src.
  *
  * RETURNS
- *      The amount of data processed in bytes (including the NTP packet size). Zero bytes encoded indicates an error.
+ *      The amount of data processed in bytes (including the NTP packet size).
+ *      A negative result indicates an error.
  */
 int NTS_parse_extension_fields(
-                uint8_t (*src)[1280],
+                uint8_t src[static NTS_MAX_PACKET_SIZE],
                 size_t src_len,
-                const struct NTS_Query *,
-                struct NTS_Receipt *);
+                const NTS_Query *nts,
+                NTS_Receipt *fields);

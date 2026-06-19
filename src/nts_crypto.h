@@ -3,10 +3,10 @@
 #include "nts.h"
 #include "nts_extfields.h"
 
-typedef struct AssociatedData {
-        const uint8_t *data;
-        const size_t length;
-} AssociatedData;
+struct AssociatedData {
+        uint8_t *data;
+        size_t length;
+};
 
 /* encrypt the data in ptxt of ptxt_len bytes, and write it to ctxt, using the selected cryptoscheme and key
  * the associated data should point to an array of NULL-terminated chunks of associated data
@@ -16,10 +16,11 @@ typedef struct AssociatedData {
  * RETURNS: the number of bytes in the ciphertext (< 0 indicates an error)
  */
 int NTS_encrypt(uint8_t *ctxt,
+                size_t ctxt_len,
                 const uint8_t *ptxt,
-                int ptxt_len,
-                const AssociatedData *,
-                const struct NTS_AEADParam *,
+                size_t ptxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key);
 
 /* decrypt the data in ctxt of ctxt_len bytes, and write it to ptxt, using the selected cryptoscheme and key
@@ -32,8 +33,9 @@ int NTS_encrypt(uint8_t *ctxt,
  * RETURNS: the number of bytes in the decrypted plaintext (< 0 indicates an error)
  */
 int NTS_decrypt(uint8_t *ptxt,
+                size_t ptxt_len,
                 const uint8_t *ctxt,
-                int ctxt_len,
-                const AssociatedData *,
-                const struct NTS_AEADParam *,
+                size_t ctxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key);

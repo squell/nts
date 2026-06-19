@@ -10,7 +10,7 @@
 #  error Your Nettle version is too old, need at least version 3.8
 #endif
 
-static const struct NTS_AEADParam supported_algos[] = {
+static const NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
         { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
 #ifdef SIV_GCM_BLOCK_SIZE
@@ -19,7 +19,7 @@ static const struct NTS_AEADParam supported_algos[] = {
 #endif
 };
 
-const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
+const NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         for (size_t i=0; i < ELEMENTSOF(supported_algos); i++)
                 if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];
@@ -27,7 +27,7 @@ const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         return NULL;
 }
 
-#define CHECK(expr) if (expr == 1); else goto exit;
+#define CHECK(expr) if ((expr) == 1); else goto exit;
 
 union ctx {
         struct siv_cmac_aes128_ctx siv_cmac128;
@@ -37,11 +37,15 @@ union ctx {
 };
 
 int NTS_encrypt(uint8_t *ctxt,
+                size_t max_ctxt_len,
                 const uint8_t *ptxt,
-                int ptxt_len,
-                const AssociatedData *info,
-                const struct NTS_AEADParam *aead,
+                size_t ptxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key) {
+
+        CHECK(max_ctxt_len >= aead->block_size);
+        CHECK(max_ctxt_len - aead->block_size >= ptxt_len);
 
         assert(info[0].data);
         assert(info[1].data && info[1].length >= SIV_MIN_NONCE_SIZE);
@@ -112,16 +116,22 @@ int NTS_encrypt(uint8_t *ctxt,
 
         /* apparently encryption can't fail with nettle */
         return ctxt_len;
+exit:
+	return -1;
 }
 
 int NTS_decrypt(uint8_t *ptxt,
+                size_t max_ptxt_len,
                 const uint8_t *ctxt,
-                int ctxt_len,
-                const AssociatedData *info,
-                const struct NTS_AEADParam *aead,
+                size_t ctxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;
+
+        CHECK(ctxt_len >= aead->block_size);
+        CHECK(ctxt_len - aead->block_size <= max_ptxt_len);
 
         assert(info[0].data);
         assert(info[1].data && info[1].length >= SIV_MIN_NONCE_SIZE);

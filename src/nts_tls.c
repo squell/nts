@@ -1,9 +1,8 @@
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/socket.h>
 #include <assert.h>
-#include <errno.h>
+#include <string.h>
+#include <syslog.h>
+#include <unistd.h>
+#include <sys/param.h>
 
 #ifdef USE_GNUTLS
 #include <gnutls/gnutls.h>
@@ -14,22 +13,26 @@
 #include "nts.h"
 
 int NTS_TLS_extract_keys(
-                NTS_TLS *opaque,
+                NTS_TLS *session,
                 NTS_AEADAlgorithmType aead,
                 uint8_t *c2s,
                 uint8_t *s2c,
-                int key_capacity) {
+                size_t key_capacity) {
+
+        assert(session);
+        assert(c2s);
+        assert(s2c);
 
 #ifdef USE_GNUTLS
-        gnutls_session_t session = (void *)opaque;
+        gnutls_session_t tls = (void *)session;
 #else
-        SSL *session = (void *)opaque;
+        SSL *tls = (void *)session;
 #endif
 
         uint8_t *keys[] = { c2s, s2c };
-        const char label[30] = { "EXPORTER-network-time-security" }; /* note: this does not include the zero byte */
+        const char label[] = "EXPORTER-network-time-security";
 
-        const struct NTS_AEADParam *info = NTS_get_param(aead);
+        const NTS_AEADParam *info = NTS_get_param(aead);
         if (!info)
                 return -EINVAL;
         else if (info->key_size > key_capacity)
@@ -39,7 +42,7 @@ int NTS_TLS_extract_keys(
                 const uint8_t context[5] = { 0, 0, (aead >> 8) & 0xFF, aead & 0xFF, i };
 #ifdef USE_GNUTLS
                 if (gnutls_prf_rfc5705(
-                                        session,
+                                        tls,
                                         sizeof(label), label,
                                         sizeof(context), (const char*)context,
                                         info->key_size,
@@ -47,37 +50,38 @@ int NTS_TLS_extract_keys(
                                 ) != GNUTLS_E_SUCCESS)
 #else
                 if (SSL_export_keying_material(
-                                        session,
+                                        tls,
                                         keys[i], info->key_size,
-                                        label, sizeof label,
+                                        label, strlen(label),
                                         context, sizeof context, 1)
                                 != 1)
 #endif
-                        return -EBADE;
+                        return -EPROTO;
         }
 
         return 0;
 }
 
-int NTS_TLS_handshake(NTS_TLS *opaque) {
+int NTS_TLS_handshake(NTS_TLS *session) {
 #ifdef USE_GNUTLS
-        gnutls_session_t session = (void *)opaque;
+        gnutls_session_t tls = (void *)session;
 
-        int result = gnutls_handshake(session);
+        int result = gnutls_handshake(tls);
         if (result == GNUTLS_E_SUCCESS)
                 return 1;
         else
                 return gnutls_error_is_fatal(result)? -EIO : 0;
 #else
-        SSL *session = (void *)opaque;
+        assert(session);
+        SSL *tls = (void *)session;
 
-        int result = SSL_connect(session);
+        int result = SSL_connect(tls);
         if (result == 1)
                 return 1;
 
-        switch (SSL_get_error(session, result)) {
+        switch (SSL_get_error(tls, result)) {
         case SSL_ERROR_ZERO_RETURN:
-                return 1;
+                return -ECONNRESET;
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
                 return 0;
@@ -87,18 +91,23 @@ int NTS_TLS_handshake(NTS_TLS *opaque) {
 #endif
 }
 
-ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
+ssize_t NTS_TLS_write(NTS_TLS *session, const void *buffer, size_t size) {
+        assert(session);
+        assert(buffer);
 #ifdef USE_GNUTLS
-        gnutls_session_t session = (void *)opaque;
-        ssize_t result = gnutls_record_send(session, buffer, size);
-        return result > 0? result : -!!gnutls_error_is_fatal(result);
+        gnutls_session_t tls = (void *)session;
+        ssize_t result = gnutls_record_send(tls, buffer, size);
+        return result > 0? result : gnutls_error_is_fatal(result)? -EIO : 0;
 #else
-        SSL *session = (void *)opaque;
-        int result = SSL_write(session, buffer, size);
+        /* clamp size to fit in the range required by OpenSSL */
+        size = MIN(size, (size_t)INT_MAX);
+
+        SSL *tls = (void *)session;
+        int result = SSL_write(tls, buffer, size);
         if (result > 0)
                 return result;
 
-        switch (SSL_get_error(session, result)) {
+        switch (SSL_get_error(tls, result)) {
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
                 return 0;
@@ -108,18 +117,23 @@ ssize_t NTS_TLS_write(NTS_TLS *opaque, const void *buffer, size_t size) {
 #endif
 }
 
-ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
+ssize_t NTS_TLS_read(NTS_TLS *session, void *buffer, size_t size) {
+        assert(session);
+        assert(buffer);
 #ifdef USE_GNUTLS
-        gnutls_session_t session = (void *)opaque;
-        ssize_t result = gnutls_record_recv(session, buffer, size);
-        return result > 0? result : -!!gnutls_error_is_fatal(result);
+        gnutls_session_t tls = (void *)session;
+        ssize_t result = gnutls_record_recv(tls, buffer, size);
+        return result > 0? result : gnutls_error_is_fatal(result)? -EIO : 0;
 #else
-        SSL *session = (void *)opaque;
-        int result = SSL_read(session, buffer, size);
+        /* clamp size to fit in the range required by OpenSSL */
+        size = MIN(size, (size_t)INT_MAX);
+
+        SSL *tls = (void *)session;
+        int result = SSL_read(tls, buffer, size);
         if (result > 0)
                 return result;
 
-        switch (SSL_get_error(session, result)) {
+        switch (SSL_get_error(tls, result)) {
         case SSL_ERROR_WANT_READ:
         case SSL_ERROR_WANT_WRITE:
                 return 0;
@@ -129,32 +143,34 @@ ssize_t NTS_TLS_read(NTS_TLS *opaque, void *buffer, size_t size) {
 #endif
 }
 
-void NTS_TLS_close(NTS_TLS *opaque) {
+NTS_TLS* NTS_TLS_free(NTS_TLS *session) {
+        if (session == NULL)
+                return NULL;
+
 #ifdef USE_GNUTLS
-        gnutls_session_t session = (void *)opaque;
+        gnutls_session_t tls = (void *)session;
 
         /* unidirectional closing is enough */
-        (void) gnutls_bye(session, GNUTLS_SHUT_WR);
+        (void) gnutls_bye(tls, GNUTLS_SHUT_WR);
 
         void *certs = NULL;
-        int r = gnutls_credentials_get(session, GNUTLS_CRD_CERTIFICATE, &certs);
+        int r = gnutls_credentials_get(tls, GNUTLS_CRD_CERTIFICATE, &certs);
         assert(r == GNUTLS_E_SUCCESS);
 
-        int sock = gnutls_transport_get_int(session);
-        gnutls_deinit(session);
+        int sock = gnutls_transport_get_int(tls);
+        gnutls_deinit(tls);
         gnutls_certificate_free_credentials(certs);
         close(sock);
 #else
-        SSL *session = (void *)opaque;
+        SSL *tls = (SSL*) session;
 
         /* unidirectional closing is enough */
-        (void) SSL_shutdown(session);
-        SSL_free(session);
+        (void) SSL_shutdown(tls);
+        SSL_free(tls);
 #endif
-}
 
-#define CHECK(what) if(what); else goto CLEANUP;
-#define CLEANUP exit
+        return NULL;
+}
 
 #ifdef USE_GNUTLS
 
@@ -164,31 +180,36 @@ NTS_TLS* NTS_TLS_setup(
 
         gnutls_certificate_credentials_t certs = NULL;
         gnutls_session_t tls = NULL;
-        CHECK(gnutls_certificate_allocate_credentials(&certs) == GNUTLS_E_SUCCESS);
-        #undef CLEANUP
-        #define CLEANUP ctx_cleanup
+        if (gnutls_certificate_allocate_credentials(&certs) != GNUTLS_E_SUCCESS)
+                return NULL;
 
-        CHECK(gnutls_init(&tls, GNUTLS_CLIENT) == GNUTLS_E_SUCCESS);
-        #undef CLEANUP
-        #define CLEANUP sess_cleanup
+        if (gnutls_init(&tls, GNUTLS_CLIENT) != GNUTLS_E_SUCCESS)
+                goto ctx_cleanup;
 
-        CHECK(gnutls_certificate_set_x509_system_trust(certs) > 0);
-        CHECK(gnutls_credentials_set(tls, GNUTLS_CRD_CERTIFICATE, certs) == GNUTLS_E_SUCCESS);
+        if (gnutls_certificate_set_x509_system_trust(certs) <= 0)
+                goto sess_cleanup;
 
-        CHECK(gnutls_priority_set_direct(tls, "NORMAL:-VERS-ALL:+VERS-TLS1.3", NULL) == GNUTLS_E_SUCCESS);
+        if (gnutls_credentials_set(tls, GNUTLS_CRD_CERTIFICATE, certs) != GNUTLS_E_SUCCESS)
+                goto sess_cleanup;
+
+        if (gnutls_priority_set_direct(tls, "NORMAL:-VERS-ALL:+VERS-TLS1.3", NULL) != GNUTLS_E_SUCCESS)
+                goto sess_cleanup;
+
         gnutls_session_set_verify_cert(tls, hostname, 0);
 
-        CHECK(gnutls_server_name_set(tls, GNUTLS_NAME_DNS, hostname, strlen(hostname)) == GNUTLS_E_SUCCESS);
+        if(gnutls_server_name_set(tls, GNUTLS_NAME_DNS, hostname, strlen(hostname)) != GNUTLS_E_SUCCESS)
+                goto sess_cleanup;
 
         unsigned char alpn[7] = "ntske/1";
-        CHECK(
+        if (
                 gnutls_alpn_set_protocols(
                         tls,
                         &(gnutls_datum_t){ .data = alpn, .size = sizeof(alpn) },
                         1,
                         GNUTLS_ALPN_MANDATORY
-                ) == GNUTLS_E_SUCCESS
-        );
+                ) != GNUTLS_E_SUCCESS
+        )
+                goto sess_cleanup;
 
         gnutls_transport_set_int(tls, socket);
         gnutls_handshake_set_timeout(tls, GNUTLS_DEFAULT_HANDSHAKE_TIMEOUT);
@@ -199,10 +220,8 @@ sess_cleanup:
         gnutls_deinit(tls);
 ctx_cleanup:
         gnutls_certificate_free_credentials(certs);
-exit:
         return NULL;
 }
-#undef CLEANUP
 
 #else
 
@@ -210,39 +229,54 @@ NTS_TLS* NTS_TLS_setup(
                 const char *hostname,
                 int socket) {
 
-        SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
-        CHECK(ctx);
-        #undef CLEANUP
-        #define CLEANUP ctx_cleanup
+        int r;
 
-        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-        CHECK(SSL_CTX_set_default_verify_paths(ctx) == 1);
-        CHECK(SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION) == 1);
+        assert(hostname);
+
+        SSL_CTX *ctx = SSL_CTX_new(TLS_client_method());
+        if (!ctx)
+                return NULL;
+
+        r = SSL_CTX_set_default_verify_paths(ctx);
+        if (r != 1)
+                goto ctx_cleanup;
+
+        r = SSL_CTX_set_min_proto_version(ctx, TLS1_3_VERSION);
+        if (r != 1)
+                goto ctx_cleanup;
 
         SSL *tls = SSL_new(ctx);
-        CHECK(tls);
-        #undef CLEANUP
-        #define CLEANUP sess_cleanup
+        if (!tls)
+                goto ctx_cleanup;
 
-        CHECK(SSL_set1_host(tls, hostname) == 1);
-        CHECK(SSL_set_tlsext_host_name(tls, hostname) == 1);
+        SSL_set_verify(tls, SSL_VERIFY_PEER, NULL);
+        r = SSL_set1_host(tls, hostname);
+        if (r != 1)
+                goto sess_cleanup;
 
-        unsigned char alpn[8] = "\x07ntske/1";
-        CHECK(SSL_set_alpn_protos(tls, alpn, sizeof(alpn)) == 0);
+        r = SSL_set_tlsext_host_name(tls, hostname);
+        if (r != 1)
+                goto sess_cleanup;
+
+        unsigned char alpn[] = "\x07ntske/1";
+        r = SSL_set_alpn_protos(tls, alpn, strlen((char*)alpn));
+        if (r != 0)
+                goto sess_cleanup;
 
         BIO *bio = BIO_new(BIO_s_socket());
-        CHECK(bio);
-        BIO_set_fd(bio, socket, BIO_CLOSE);
+        if (!bio)
+                goto sess_cleanup;
+
+        BIO_set_fd(bio, socket, BIO_NOCLOSE);
         SSL_set_bio(tls, bio, bio);
 
-        SSL_CTX_free(ctx);
-        return (void *)tls;
+        return (void*)tls;
 
 sess_cleanup:
         SSL_free(tls);
 ctx_cleanup:
         SSL_CTX_free(ctx);
-exit:
         return NULL;
 }
+
 #endif

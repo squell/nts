@@ -7,7 +7,7 @@
 #    error Your gcrypt version is too old, need at least version 1.10
 #endif
 
-static const struct NTS_AEADParam supported_algos[] = {
+static const NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_SIV_CMAC_256, 256/8, 16, 16, true, false, "AES-128-SIV" },
         { NTS_AEAD_AES_SIV_CMAC_512, 512/8, 16, 16, true, false, "AES-256-SIV" },
         { NTS_AEAD_AES_SIV_CMAC_384, 384/8, 16, 16, true, false, "AES-192-SIV" },
@@ -15,7 +15,7 @@ static const struct NTS_AEADParam supported_algos[] = {
         { NTS_AEAD_AES_256_GCM_SIV,  256/8, 16, 12, false, true, "AES-256-GCM-SIV" },
 };
 
-const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
+const NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
         for (size_t i=0; i < ELEMENTSOF(supported_algos); i++)
                 if (supported_algos[i].aead_id == id)
                         return &supported_algos[i];
@@ -27,11 +27,11 @@ const struct NTS_AEADParam* NTS_get_param(NTS_AEADAlgorithmType id) {
 
 static int process_assoc_data(
         gcry_cipher_hd_t handle,
-        const AssociatedData *info,
-        const struct NTS_AEADParam *aead
+        const struct AssociatedData *info,
+        const NTS_AEADParam *aead
 ) {
         /* process the associated data and nonce first */
-        const AssociatedData *last = NULL;
+        const struct AssociatedData *last = NULL;
         if (aead->nonce_is_iv) {
                 /* workaround for the GCM-SIV interface, where the IV is set directly */
                 assert(info->data);
@@ -50,7 +50,7 @@ exit:
         return 0;
 }
 
-static int gcrypt_mode(const struct NTS_AEADParam *aead) {
+static int gcrypt_mode(const NTS_AEADParam *aead) {
         switch (aead->aead_id) {
         case NTS_AEAD_AES_SIV_CMAC_256:
         case NTS_AEAD_AES_SIV_CMAC_384:
@@ -62,19 +62,25 @@ static int gcrypt_mode(const struct NTS_AEADParam *aead) {
         default:
                 assert(!"unreachable");
         }
+        /* this is never reached */
+        return -1;
 }
 
 int NTS_encrypt(uint8_t *ctxt,
+                size_t ctxt_len,
                 const uint8_t *ptxt,
-                int ptxt_len,
-                const AssociatedData *info,
-                const struct NTS_AEADParam *aead,
+                size_t ptxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;
 
         gcry_cipher_hd_t handle;
         CHECK(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
+
+        CHECK(ctxt_len >= aead->block_size);
+        CHECK(ctxt_len - aead->block_size >= ptxt_len);
 
         CHECK(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
         CHECK(process_assoc_data(handle, info, aead));
@@ -97,17 +103,20 @@ exit:
 }
 
 int NTS_decrypt(uint8_t *ptxt,
+                size_t ptxt_len,
                 const uint8_t *ctxt,
-                int ctxt_len,
-                const AssociatedData *info,
-                const struct NTS_AEADParam *aead,
+                size_t ctxt_len,
+                const struct AssociatedData *info,
+                const NTS_AEADParam *aead,
                 const uint8_t *key) {
 
         int result = -1;
 
         gcry_cipher_hd_t handle;
         CHECK(gcry_cipher_open(&handle, GCRY_CIPHER_AES, gcrypt_mode(aead), 0) == GPG_ERR_NO_ERROR);
+
         CHECK(ctxt_len >= aead->block_size);
+        CHECK(ctxt_len - aead->block_size <= ptxt_len);
 
         CHECK(gcry_cipher_setkey(handle, key, aead->key_size) == GPG_ERR_NO_ERROR);
         CHECK(process_assoc_data(handle, info, aead));
